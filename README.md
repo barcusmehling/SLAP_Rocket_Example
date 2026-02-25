@@ -4,8 +4,11 @@ Rocket finite element model case study for dynamic environment testing. This was
 There is a lot of content in this repository, but the most important is "SLAPScript.m" which was used to simulate the tests whose results are shown in the paper. The folders can be broken down as follows:
 
 Environment: contains flight environment files.
+
   FlightForces.mat - forcing functions used to create environment
+  
   FlightStressPSD.mat - maximum RMS Von Mises stress PSD in flight environment
+  
   RocketEnvironment.mat - available at link below because too big for github. Flight environment PSD matrix.
 
 FRFs: contains frequency response function matrices used to simulate tests as well as some files needed to create them.
