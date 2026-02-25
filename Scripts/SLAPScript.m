@@ -2,6 +2,8 @@
 % Marcus Behling | 2/18/2026
 clc;close all;clear all;
 %% Load Files (Takes ~30 seconds because files big)
+addpath ..\Functions\;
+
 disp('Loading Flight FRF...')
 load ..\FRFs\FlightFRF; % load and save flight force - acceleration FRF for making new environments
 H_fl = H;

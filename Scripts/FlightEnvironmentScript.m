@@ -33,7 +33,7 @@ fmat(1:2,:) = 0.2; % replace two launch forces with constant values rather than 
 % title(t, 'Nominal Flight Force PSDs','interpreter','tex')
 
 % Create flight environment PSD matrix
-Sxx = zeros(size(phi_acc,1),size(phi_acc,1),length(fs)); % initialize
+Sxx = zeros(size(H,1),size(H,1),length(fs)); % initialize
 df = 5; % frequency spacing (Hz)
 
 for ii = 1:length(fs)
