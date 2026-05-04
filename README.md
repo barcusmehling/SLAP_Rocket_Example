@@ -2,13 +2,14 @@
 Rocket finite element model case study for dynamic environment testing. This was first used in "Damage Metric-Based Vibration Testing of a Rocket Component" by Behling, Allen, Bahr, Mayes, & Delima as a case study on which to apply the scaled lab PSD (SLAP) method. This repository contains the files used for the case studies in the paper, as well as code used to simulate the case studies. The component of interest is the removable component from the BARC system, a commonly used case study in the dynamic environments case study. This was chosen because of its common usage and because it has multiple elastic modes below 2000 Hz, making it an interesting case study. 
 
 There is a lot of content in this repository, but the most important is "SLAPScript.m" (in Scripts folder) which was used to simulate the tests whose results are shown in the paper.
--
 
 The folders can be broken down as follows:
 
-AbaqusFiles: contains .cae and .inp files used to get stress and displacement modes for flight, lab, and fixed-base configurations.
+## AbaqusFiles:
+Contains .cae and .inp files used to get stress and displacement modes for flight, lab, and fixed-base configurations.
 
-Environment: contains flight environment files.
+## Environment:
+Contains flight environment files.
 
   -FlightForces.mat - forcing functions used to create environment
   
@@ -16,7 +17,8 @@ Environment: contains flight environment files.
   
   -RocketEnvironment.mat - available at link below because too big for github. Flight environment PSD matrix.
 
-FRFs: contains frequency response function matrices used to simulate tests as well as some files needed to create them.
+## FRFs: 
+Contains frequency response function matrices used to simulate tests as well as some files needed to create them.
   
   -FlightAccelNodes.mat - nodes of rocket FEM corresponding to accelerometer locations on baseplate and DUT
   
@@ -32,7 +34,8 @@ FRFs: contains frequency response function matrices used to simulate tests as we
   
   -LabStressFRFs.mat and FlightStressFRFs.mat - relate lab / flight forces to stress at stress element locs. (too big for github - see link below)
 
-Functions: contains functions used in simulations
+## Functions: 
+Contains functions used in simulations
   
   -GetFatigueRatio.m - given two Von Mises stress PSDs (flight and lab), calculates ratio of fatigue damage in them
   
@@ -54,7 +57,8 @@ Functions: contains functions used in simulations
   
   -get_psd.m - retains diagonal portions of PSD matrix
 
-ModeShapes: contains FEM and reduced sets of modes
+## ModeShapes: 
+Contains FEM and reduced sets of modes
   
   -BARCAccelModes.mat - contains mode shapes at BARC accel locations
   
@@ -74,7 +78,8 @@ ModeShapes: contains FEM and reduced sets of modes
   
   -FullRocketModes.mat - FEM modes of rocket (too big for github - find at link below)
 
-Results: contains results of simulations from paper
+## Results: 
+Contains results of simulations from paper
   
   -Results_SLAP_Buzz.mat - results from applying SLAP-Buzz
   
@@ -86,7 +91,8 @@ Results: contains results of simulations from paper
   
   -Results_SLAP_Control_Elastic.mat - results from applying SLAP-Control to 6 shaker case excluding modal acceleration metric
 
-Scripts: code used to make FRFs, simulate tests, etc.
+## Scripts: 
+Code used to make FRFs, simulate tests, etc.
   
   -FlightEnvironmentScript.m - used to make flight environment
   
@@ -110,8 +116,6 @@ Scripts: code used to make FRFs, simulate tests, etc.
   
   -StressModesScript.m - converts .csv stress modes output from Abaqus to .mat files for use elsewhere
 
-A few files were too large to include on github, and these are available at: https://byu.box.com/s/xanu0aqfyxedwmop60q8fpvicxrclrxr.
- - 
-After downloading, place these in their respective folders as mentioned above.
-
-
+## Extra Note:
+  A few files were too large to include on github, and these are available at: https://byu.box.com/s/xanu0aqfyxedwmop60q8fpvicxrclrxr.
+  After downloading, place these in their respective folders as mentioned above.
