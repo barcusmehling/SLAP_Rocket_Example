@@ -6,7 +6,7 @@
 %% ===================== LOAD DATA =====================
 clc;close all;clear all;
 disp('Loading Rocket Modes...')
-load ..\ModeShapes\Full_Rocket_Modes;   % loads nodes, phi, etc.
+load ..\LargeFiles\Full_Rocket_Modes;   % loads nodes, phi, etc.
 clc;
 % ===================== BUILD LOCATIONS for rocket =====================
 ths = 0:30:360-30;
@@ -171,8 +171,8 @@ set(h2,'ButtonDownFcn',@accelCallback)
 % Select the nodes in the figures, then run the following two save commands
 % to save the locations for later use.
 
-% save('../FRFs/FlightAccelNodes','accel_nodes')
-% save('../FRFs/FlightForceNodes','shaker_nodes')
+% save('../FRFs/Flight_Accel_Nodes','accel_nodes')
+% save('../FRFs/Flight_Force_Nodes','shaker_nodes')
 
 %% ===================== CALLBACKS =====================
 function shakerCallback(~,event)

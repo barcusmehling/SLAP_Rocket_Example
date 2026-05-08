@@ -2,37 +2,49 @@
 clc;close all;clear all;
 addpath ..\Functions; 
 
-load ..\LargeFiles\RocketEnv; % flight environment
-    % Sxx - No x No x Nf matrix of spectral densities in flight.
-    % fs - 1 x Nf frequency vector in Hz  
-load ..\FRFs\LabFRF; % control FRF
-    % H - No x Ni x Nf matrix of FRFs in the lab configuration
-load ..\LargeFiles\LabStressFRFs.mat; % lab stress FRFs to calculate stress in lab
-    % Hs - Nstr x 1 cell array of stress FRFs in the lab configuration
-    % Each stress FRF is 6 x Ni x Nf where 6 is the number of stress
-    % components.
+load ..\LargeFiles\Rocket_Env; % flight environment
+load ..\FRFs\Lab_FRF; % control FRF
+load ..\LargeFiles\Lab_Stress_FRFs.mat; % lab stress FRFs to calculate stress in lab
 
-% %%%%%%% Simulation Settings %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-shakers = 1:6; % which shakers in H to use in control
 ctrl_accs = 1:27; % control channels (baseplate accels, like a 6DOF test)
 ref_accs = 67:69; % reference channels (a random triax on the DUT)
 
-% Beginning of computations
 Sxx_est = zeros(size(Sxx)); % lab environment
 
-nsh = length(shakers); % number of shakers
+nsh = size(H,2); % number of shakers
 Sff = zeros(nsh,nsh,length(fs)); % lab force PSD matrix
 
 for ii = 1:length(fs) % calculate shaker forces and lab env at each fline
     cnthresh = 0.01*max(svd(H(ctrl_accs,:,ii))); % condition number threshold = 0.01 * largest SV of FRF mat
     % following line calculates forces while implementing CN threshold. See
     % pinv.m documentation for more detail.
-    Sff(:,:,ii) = pinv(H(ctrl_accs,shakers,ii),cnthresh)*Sxx(ctrl_accs,ctrl_accs,ii)*pinv(H(ctrl_accs,shakers,ii),cnthresh)';
-    Sxx_est(:,:,ii) = H(:,shakers,ii)*Sff(:,:,ii)*H(:,shakers,ii)'; % calculate lab response at all DOF
+    Sff(:,:,ii) = pinv(H(ctrl_accs,:,ii),cnthresh)*Sxx(ctrl_accs,ctrl_accs,ii)*pinv(H(ctrl_accs,:,ii),cnthresh)';
+    Sxx_est(:,:,ii) = H(:,:,ii)*Sff(:,:,ii)*H(:,:,ii)'; % calculate lab response at all DOF
 end
 
-% Create plot comparing spectra:
-plotTriaxPSD(fs,Sxx,Sxx_est,ref_accs)
+envpsd = get_psd(Sxx(ref_accs,ref_accs,:)); % flight environment PSDs at DUT ref accels
+labpsd = get_psd(Sxx_est(ref_accs,ref_accs,:)); % '' lab env
+
+% Plot reference responses in flight vs. lab
+figure('Units','normalized','Position',[0.1 0.1 0.8 0.4]);
+tlt = tiledlayout(1,3);
+titles = {'Ref X','Ref Y','Ref Z'};
+
+for ii = 1:3
+    nexttile;
+    semilogy(fs,abs(envpsd(ii,:)),'k',fs,abs(labpsd(ii,:)),'b','Linewidth',2)
+    xlabel('Frequency (Hz)','interpreter','tex')
+    grid on;
+    xlim([10 2000])
+    if ii == 1
+        legend('Flight','Test')
+    end
+    title(titles{ii})
+end
+
+ylabel(tlt,'Acceleration PSD (g^2/Hz)','interpreter','tex')
+tlt.TileSpacing = 'tight';
+tlt.Padding = 'tight';
 
 % Stress analysis
 ind1 = find(fs >= 95,1);
@@ -40,9 +52,9 @@ ind2 = find(fs >= 2000,1);
 rms_inds = ind1:ind2; % calculate RMS stress only including freqs above 100 Hz
 df = 5; % 5 Hz frequency spacing
 
-[sigrms_lab,sigpsd_lab,sigloc_lab] = GetStressFunc(Hs,Sff,df,rms_inds,shakers); % calculate max lab VM stress PSD
+[sigrms_lab,sigpsd_lab,sigloc_lab] = GetStressFunc(Hs,Sff,df,rms_inds,1:nsh); % calculate max lab VM stress PSD
 
-load ..\Environment\FlightStressPSD; % max flight VM stress PSD
+load ..\Environment\Flight_Stress_PSD; % max flight VM stress PSD
 
 % compare flight and lab stress PSDs
 figure;

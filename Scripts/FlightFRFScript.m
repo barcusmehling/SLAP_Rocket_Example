@@ -3,9 +3,9 @@ clc; close all; clear;
 addpath ..\Functions\; % for cl_model function
 
 % Load rocket modes and accelerometer and force locations from GetRocketLocations.m
-load ..\ModeShapes\Full_Rocket_Modes;
-load ..\FRFs\FlightAccelNodes.mat;
-load ..\FRFs\FlightForceNodes.mat; % note - these are labeled as "shaker_nodes"
+load ..\LargeFiles\Full_Rocket_Modes;
+load ..\FRFs\Flight_Accel_Nodes.mat;
+load ..\FRFs\Flight_Force_Nodes.mat; % note - these are labeled as "shaker_nodes"
 
 % get flight FRF matrix
 clc;close all;
@@ -48,7 +48,7 @@ Acl = {phi_acc,phi_sh}; % see cl_model.m documentation
 
 H = permute(cl_model(wns, zts, Acl,ws,FRF_type),[2 3 1])/9.81; % get FRF and convert from m/s^2 to g
 
-save('../FRFs/FlightFRF','H','fs') 
+save('../FRFs/Flight_FRF','H','fs') 
 
 
 

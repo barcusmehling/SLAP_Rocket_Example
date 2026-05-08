@@ -1,11 +1,11 @@
 % Simulate many SLAP tests and make plots for UNSGC 2026 paper
 % Marcus Behling | 2/18/2026
 clc;close all;clear all;
-%% Load Files (Takes ~30 seconds because files are big)
+%% Load Files (Takes ~30 seconds because files big)
 addpath ..\Functions\;
 
 disp('Loading Flight FRF...')
-load ..\FRFs\FlightFRF; % load and save flight acceleration/force FRF
+load ..\FRFs\Flight_FRF; % load and save flight acceleration/force FRF
 %   H - No x Ni x Nf - (# outputs) x (# inputs) x (# frequency lines)
 %   fs - frequency vector in Hz (Nf x 1)
 % MSA: Need to also load something that tells us what these points are!
@@ -15,24 +15,24 @@ nf = length(fs);
 ws = 2*pi*fs;
 df = fs(2)-fs(1);
 
-load ..\Environment\FlightForces; % nominal force spectra for the 8 forcing vectors on rocket - starting point for making environments
+load ..\Environment\Flight_Forces; % nominal force spectra for the 8 forcing vectors on rocket - starting point for making environments
 %   fmat - Ni x Nf matrix of nominal force spectra
 
 disp('Loading Lab FRF...')
-load ..\FRFs\LabFRF; % control FRF
+load ..\FRFs\Lab_FRF; % control FRF
 H_lab = H; clear H;
 sh_inds = 1:7; % Select which of the potential shaker locations to use
 nsh = length(sh_inds); % number of shakers
 
 disp('Loading Flight Stress FRFs...')
-load ..\LargeFiles\FlightStressFRFs.mat; % FRF to calculate stress in flight env
+load ..\LargeFiles\Flight_Stress_FRFs.mat; % FRF to calculate stress in flight env
 Hs_fl = Hs; clear Hs;
 
 disp('Loading Lab Stress FRFs...')
-load ..\LargeFiles\LabStressFRFs.mat; % FRF to calculate stress in lab
+load ..\LargeFiles\Lab_Stress_FRFs.mat; % FRF to calculate stress in lab
 Hs_lab = Hs; clear Hs;
 
-load ..\ModeShapes\BARCAccelModes; % modes for modal filtering (needed to do SLAP)
+load ..\ModeShapes\BARC_Accel_Modes; % modes for modal filtering (needed to do SLAP)
 %   phi - (Nacc*3) x (6 + Nfb)
 %       First six columns are rigid body modes,
 %       The remaining columns are fixed-interface modes

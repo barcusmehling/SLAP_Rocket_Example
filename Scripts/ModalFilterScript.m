@@ -3,8 +3,8 @@
 
 % clc;close all;clear all;
 addpath ..\Functions; % for get_psd.m
-load ..\ModeShapes\BARCAccelModes; % from GetModesAtAccels
-load ..\Environment\RocketEnv;
+load ..\ModeShapes\BARC_Accel_Modes; % from GetModesAtAccels
+load ..\LargeFiles\Rocket_Env;
 
 Sxx_BARC = Sxx(28:end,28:end,:); % DUT channels only (first 27 baseplate)
 filt_inds = 1:90; % 30 accels, 3 axis = 90 dof.

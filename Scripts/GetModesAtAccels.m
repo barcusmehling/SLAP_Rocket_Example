@@ -1,9 +1,9 @@
 % Get Rigid Body + Fixed-Base Modes at BARC Accel Locs
 clc;close all;clear all;
-load ..\FRFs\LabAccelNodes;
+load ..\FRFs\Lab_Accel_Nodes;
 barc_accelnodes = accel_nodes(10:end,2);
 
-load ..\ModeShapes\BARC_BaseplateModes;
+load ..\ModeShapes\BARC_Baseplate_Modes;
 
 phi_acc_rb = zeros(3*size(barc_accelnodes,1),6);
 c = 1;
@@ -13,7 +13,7 @@ for ii = 1:size(barc_accelnodes,1)
 end
 
 clear phi;
-load ..\ModeShapes\BARC_FixedBaseModes;
+load ..\ModeShapes\BARC_FixedBase_Modes;
 
 phi_acc_el = zeros(3*size(barc_accelnodes,1),size(phi,2));
 c = 1;
@@ -28,4 +28,4 @@ clear phi;
 phi = phi_acc;
 readme = '6 Rigid Body + Fixed-Base Modes';
 
-save('../ModeShapes/BARCAccelModes','phi','readme')
+save('../ModeShapes/BARC_Accel_Modes','phi','readme')

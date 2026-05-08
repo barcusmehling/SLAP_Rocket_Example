@@ -19,11 +19,11 @@ end
 
 psi(:,:,1) = []; % get rid of fake 1st mode - doesn't actually correspond to a mode
 
-save('../ModeShapes/FixedBaseStressModes','psi')
+save('../ModeShapes/FixedBase_Stress_Modes','psi')
 
 %% Flight stress modes
 clc;close all;clear all;
-load ..\ModeShapes\Full_Rocket_Modes.mat;
+load ..\LargeFiles\Full_Rocket_Modes.mat;
 data = readtable('..\ModeShapes\Full_Rocket_Stress.csv');
 ndof = 459;
 nmodes = size(phi,2);
@@ -37,7 +37,7 @@ end
 
 psi(:,:,1) = [];
 
-save('..\ModeShapes\FlightStressModes','psi')
+save('..\ModeShapes\Full_Rocket_Stress_Modes','psi')
 
 %% Lab setup stress modes
 clc;close all;clear all;
@@ -55,7 +55,7 @@ end
 
 psi(:,:,1) = [];
 
-save('..\ModeShapes\BARCBaseplateStressModes','psi')
+save('..\ModeShapes\BARC_Baseplate_Stress_Modes','psi')
 
 
 

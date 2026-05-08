@@ -1,6 +1,6 @@
 % Make flight environment using FRF from FlightFRFScript.m
 clc;close all;clear all;
-load ..\FRFs\FlightFRF;
+load ..\FRFs\Flight_FRF;
 
 % Define flight forcing PSDs
 fvec = 0.5*logspace(0,-2,601); % make force PSDs linearly decay on loglog plot
@@ -9,7 +9,7 @@ fmat = [fvec;fvec;fvec;fvec;fvec;fvec;fvec;fvec]; % 8 times for 8 flight forces
 
 fmat(1:2,:) = 0.2; % replace two launch forces with constant values rather than decay
 
-save('../Environment/FlightForces','fmat')
+save('../Environment/Flight_Forces','fmat')
 
 % Plot force PSDs
 figure;
@@ -40,4 +40,4 @@ for ii = 1:length(fs)
     Sxx(:,:,ii) = H(:,:,ii)*(fmat(:,ii)*fmat(:,ii)')*H(:,:,ii)'/df; % x = H*f in PSD form. Divide by df to get /Hz units.
 end
 
-save('../Environment/RocketEnv.mat','Sxx','fs')
+save('../LargeFiles/Rocket_Env.mat','Sxx','fs')

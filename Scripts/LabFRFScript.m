@@ -4,9 +4,9 @@
 clc;close all;clear all;
 addpath ..\Functions\; % for cl_model function
 
-load ..\ModeShapes\BARC_BaseplateModes; % load lab modes and accel and shaker locs
-load ..\FRFs\LabAccelNodes.mat;
-load ..\FRFs\LabShakerNodes;
+load ..\ModeShapes\BARC_Baseplate_Modes; % load lab modes and accel and shaker locs
+load ..\FRFs\Lab_Accel_Nodes.mat;
+load ..\FRFs\Lab_Shaker_Nodes;
 
 % get lab FRF matrix
 clc;
@@ -44,7 +44,7 @@ FRF_type = 2; % acceleration div. by force (see cl_model doc.)
 
 H = permute(cl_model(wns, zts,Acl,ws,FRF_type),[2 3 1])/9.81; % convert to g
 
-save('../FRFs/LabFRF','H','fs')
+save('../FRFs/Lab_FRF','H','fs')
 
 
 

@@ -2,9 +2,9 @@
 % Flight
 clc;close all;clear all;
 addpath ..\Functions\;
-load ..\ModeShapes\FullRocketModes; % load flight disp. modes, force locs, and stress modes
-load ..\FRFs\FlightForceNodes.mat;
-load ..\ModeShapes\FlightStressModes.mat;
+load ..\LargeFiles\Full_Rocket_Modes; % load flight disp. modes, force locs, and stress modes
+load ..\FRFs\Flight_Force_Nodes.mat;
+load ..\ModeShapes\Full_Rocket_Stress_Modes.mat;
 
 nmodes = length(fn); % 91 below 3000 Hz
 mode_inds = 1:nmodes;
@@ -41,7 +41,7 @@ for ii = 1:length(Hs) % calculate FRF for each element
     Hs{ii} = H; % save to cell
 end
 
-save('../FRFs/FlightStressFRFs','Hs')
+save('../LargeFiles/Flight_Stress_FRFs','Hs')
 
 % Calculate stress PSDs in flight for the fun of it
 
@@ -65,13 +65,13 @@ rms_inds_fl = ind1:ind2;
 
 [sigrms_fl,sigpsd_fl,sigloc_fl] = GetStressFunc(Hs,Sff,df,rms_inds_fl,1:8);
 
-save('../Environment/FlightStressPSD','sigrms_fl','sigpsd_fl','sigloc_fl','rms_inds_fl')
+save('../Environment/Flight_Stress_PSD','sigrms_fl','sigpsd_fl','sigloc_fl','rms_inds_fl')
 
 % Lab
 clc;close all;clear all;
-load ..\ModeShapes\BARC_BaseplateModes;
-load ..\FRFs\LabShakerNodes
-load ..\ModeShapes\LabStressModes.mat;
+load ..\ModeShapes\BARC_Baseplate_Modes;
+load ..\FRFs\Lab_Shaker_Nodes
+load ..\ModeShapes\BARC_Baseplate_Stress_Modes.mat;
 
 % get FRF matrix
 clc;close all;
@@ -106,7 +106,7 @@ for ii = 1:length(Hs)
     Hs{ii} = H;
 end
 
-save('../FRFs/LabStressFRFs','Hs')
+save('../LargeFiles/Lab_Stress_FRFs','Hs')
 
 
 
