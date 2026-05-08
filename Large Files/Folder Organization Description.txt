@@ -1,0 +1,10 @@
+This folder is for containing all of the large files that need to be downloaded using the link in the repository README file.
+Download the files and unzip the contents into this folder. Feel free to delete the zip file after this is done if you would
+like.
+
+This is how the file structure should look after you are done:
+SLAP_Rocket_Example\Large Files\FullRocket.cae
+SLAP_Rocket_Example\Large Files\Flight_Stress_FRFs.mat
+SLAP_Rocket_Example\Large Files\Full_Rocket_Modes.mat
+SLAP_Rocket_Example\Large Files\Rocket_Env.mat
+SLAP_Rocket_Example\Large Files\LabStressFRFs.mat
