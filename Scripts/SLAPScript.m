@@ -5,39 +5,50 @@ clc;close all;clear all;
 addpath ..\Functions\;
 
 disp('Loading Flight FRF...')
-load ..\FRFs\FlightFRF; % load and save flight force - acceleration FRF for making new environments
-H_fl = H;
+load ..\FRFs\FlightFRF; % load and save flight acceleration/force FRF
+%   H - No x Ni x Nf - (# outputs) x (# inputs) x (# frequency lines)
+%   fs - frequency vector in Hz (Nf x 1)
+% MSA: Need to also load something that tells us what these points are!
+% %%%%%%%%%
+H_fl = H; clear H;
 nf = length(fs);
 ws = 2*pi*fs;
 df = fs(2)-fs(1);
-clear H;
 
-load ..\Environment\FlightForces; % nominal forces for the 8 forcing vectors on rocket - starting point for making environments
+load ..\Environment\FlightForces; % nominal force spectra for the 8 forcing vectors on rocket - starting point for making environments
+%   fmat - Ni x Nf matrix of nominal force spectra
 
 disp('Loading Lab FRF...')
 load ..\FRFs\LabFRF; % control FRF
-H_lab = H;
-sh_inds = 1:7;
+H_lab = H; clear H;
+sh_inds = 1:7; % Select which of the potential shaker locations to use
 nsh = length(sh_inds); % number of shakers
-clear H;
 
 disp('Loading Flight Stress FRFs...')
-load ..\FRFs\FlightStressFRFs.mat; % FRF to calculate stress in flight env
-Hs_fl = Hs;
-clear Hs;
+load ..\LargeFiles\FlightStressFRFs.mat; % FRF to calculate stress in flight env
+Hs_fl = Hs; clear Hs;
 
 disp('Loading Lab Stress FRFs...')
-load ..\FRFs\LabStressFRFs.mat; % FRF to calculate stress in lab
-Hs_lab = Hs;
-clear Hs;
+load ..\LargeFiles\LabStressFRFs.mat; % FRF to calculate stress in lab
+Hs_lab = Hs; clear Hs;
 
 load ..\ModeShapes\BARCAccelModes; % modes for modal filtering (needed to do SLAP)
-nacc = size(H_fl,1); % number of accels
-ctrl_inds = 1:27;
-filt_inds = 28:117; % only use DUT accel channels in filtering
+%   phi - (Nacc*3) x (6 + Nfb)
+%       First six columns are rigid body modes,
+%       The remaining columns are fixed-interface modes
+%       ADD DOCUMENTATION - ACCEL SET??
 phi_filt = phi; % use 6 rigid body + 6 fixed-base modes in modal filter
-fb_inds = 7:12; % these columns are fixed-base modes in phi mat
-rms_inds = 51:401; % everything between 250 and 2000 Hz include in RMS stress (stuff below 250 Hz can be large in magnitude but doesn't cause stress because basically rigid)
+    fb_inds = 7:12; % these columns are fixed-base modes in phi_filt
+
+% Define indicies to match between fixed-interface modes and flight
+nacc = size(H_fl,1); % number of accel channels in H_fl
+    ctrl_inds = 1:27; % Indicies in H_fl that correspond to control channels
+    filt_inds = 28:117; % Indicies in H_fl that correspond to the DUT accel channels.
+        % These are the same as the (Nacc*3) channels in phi from BARCAccelModes
+    rms_inds = 51:401; % frequency indicies (in fs) to use when computing RMS stress
+    % 51:401 uses everything 250 and 2000 Hz.  (Motions below 250 Hz can be
+    % large in magnitude but don't cause stress because the DUT is basically rigid)
+
 %% Simulate Tests
 nsims = 100; % number of simulations to perform (each takes 2-3 seconds on my computer...)
 
@@ -51,9 +62,8 @@ p = 0.99; % 99 percent confidence level - "we have 99 percent confidence that th
 
 nflforces = size(fmat,1); % number of flight forces
 fl_force_inds = 1:nflforces;
-clc;
 
-ctrl = 1; % SLAP-Control if 1, SLAP-Buzz if 0
+ctrl = 0; % SLAP-Control if 1, SLAP-Buzz if 0
 
 %%%%%%%%%%%%%%%% SLAP-Buzz params %%%%%%%%%%%%%%%%%%%%%%%%%%%
 Sff_lab = eye(nsh,nsh); % all diagonal terms 1 N^2/Hz (can change this to scale shakers preferentially! This is just a starting point)
@@ -115,6 +125,13 @@ for ii = 1:nsims
 
     [scaling,metric_vals(ii,:)] = SLAPfunc(Sxx_lab(filt_inds,filt_inds,:),Sxx_fl(filt_inds,filt_inds,:),phi_filt,fs,fb_inds,rms_inds,bf,Ts,p); % Apply SLAP
 
+    % Create a plot comparing the spectra at a point:
+        % {
+        ref_accs = 67:69; % reference channels (a random triax on the DUT)
+        plotTriaxPSD(fs,Sxx_fl,Sxx_lab*scaling,ref_accs)
+        pause
+        %}
+
     sig_lab_rms = sigrms_lab*sqrt(scaling); % control
     sigpsd_lab = sigpsd_lab*scaling;
     stress_ratio = sig_lab_rms / sigrms_fl; % RMS stress ratio
@@ -126,7 +143,7 @@ for ii = 1:nsims
     
 end
 
-readme = 'SLAP-Buzz, shakers 1-8, checking if I get consistent results.';
+readme = 'SLAP-Control, shakers 1-7, checking if I get consistent results.';
 save('..\Results\Results_SLAP_Control','actual_metrics','scales','metric_vals','readme')
 %% Load and plot results (need to have variables before big for loop above loaded in)
 load ..\Results\Results_SLAP_Control.mat;
