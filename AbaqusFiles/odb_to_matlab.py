@@ -39,7 +39,7 @@ parser.add_argument("--instance", default=None,  help="Assembly instance name")
 args = parser.parse_args()
 
 odb_path = os.path.abspath(args.odb)
-mat_path = args.mat or os.path.splitext(odb_path)[0] + ".mat"
+mat_path = args.mat or os.path.splitext(odb_path)[0] + "_Modes.mat"
 
 # ---------------------------------------------------------------------------
 # Open ODB
