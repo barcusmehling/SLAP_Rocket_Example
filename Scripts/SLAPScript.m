@@ -1,7 +1,7 @@
 % Simulate many SLAP tests and make plots for UNSGC 2026 paper
 % Marcus Behling | 2/18/2026
 clc;close all;clear all;
-%% Load Files (Takes ~30 seconds because files big)
+%% Load Files (Takes ~30 seconds because files are big)
 addpath ..\Functions\;
 
 disp('Loading Flight FRF...')
