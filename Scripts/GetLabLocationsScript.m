@@ -1,7 +1,7 @@
 % Same as GetRocketLocationsScript.m but for lab config
 clc;close all;clear all;
 disp('Loading Lab Modes...')
-load ..\ModeShapes\BARC_BaseplateModes;   % loads nodes, phi, etc.
+load ..\ModeShapes\BARC_Baseplate_Modes;   % loads nodes, phi, etc.
 clc;
 % DUT and baseplate nodes
 % DUT nodes

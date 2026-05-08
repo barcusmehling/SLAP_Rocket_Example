@@ -3,7 +3,7 @@ clc; close all; clear;
 addpath ..\Functions\; % for cl_model function
 
 % Load rocket modes and accelerometer and force locations from GetRocketLocations.m
-load ..\ModeShapes\FullRocketModes;
+load ..\ModeShapes\Full_Rocket_Modes;
 load ..\FRFs\FlightAccelNodes.mat;
 load ..\FRFs\FlightForceNodes.mat; % note - these are labeled as "shaker_nodes"
 

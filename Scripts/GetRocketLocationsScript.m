@@ -6,7 +6,7 @@
 %% ===================== LOAD DATA =====================
 clc;close all;clear all;
 disp('Loading Rocket Modes...')
-load ..\ModeShapes\FullRocketModes;   % loads nodes, phi, etc.
+load ..\ModeShapes\Full_Rocket_Modes;   % loads nodes, phi, etc.
 clc;
 % ===================== BUILD LOCATIONS for rocket =====================
 ths = 0:30:360-30;

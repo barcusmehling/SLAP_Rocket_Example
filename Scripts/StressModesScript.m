@@ -5,9 +5,10 @@
 % BARC Fixed-Base Stress Modes (I don't actually use these for anything at
 % the moment...)
 clc;close all;clear all;
-data = readtable('..\ModeShapes\BARC_FixedBaseStressModes.csv');
+load ..\ModeShapes\BARC_FixedBase_Modes.mat;
+data = readtable('..\ModeShapes\BARC_FixedBase_Stress.csv');
 ndof = 459; % num. stress elements to calculate stress on. can check this in csv file.
-nmodes = 6; % 6 fixed-base modes of the DUT 
+nmodes = size(phi,2); % 6 fixed-base modes of the DUT 
 psi = zeros(ndof,6,nmodes+1); % stress mode matrix - 6 (num stress tensor components) x nmodes for each stress el
 
 c = 1;
@@ -22,9 +23,10 @@ save('../ModeShapes/FixedBaseStressModes','psi')
 
 %% Flight stress modes
 clc;close all;clear all;
-data = readtable('..\ModeShapes\FlightStressModes.csv');
+load ..\ModeShapes\Full_Rocket_Modes.mat;
+data = readtable('..\ModeShapes\Full_Rocket_Stress.csv');
 ndof = 459;
-nmodes = 91;
+nmodes = size(phi,2);
 psi = zeros(ndof,6,nmodes+1);
 
 c = 1;
@@ -39,9 +41,10 @@ save('..\ModeShapes\FlightStressModes','psi')
 
 %% Lab setup stress modes
 clc;close all;clear all;
-data = readtable('..\ModeShapes\BARC_baseplate_StressModes.csv');
+load ..\ModeShapes\BARC_Baseplate_Modes.mat;
+data = readtable('..\ModeShapes\BARC_Baseplate_Stress.csv');
 ndof = 459;
-nmodes = 15;
+nmodes = size(phi,2);
 psi = zeros(ndof,6,nmodes+1);
 
 c = 1;
