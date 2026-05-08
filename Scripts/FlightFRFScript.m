@@ -48,7 +48,7 @@ Acl = {phi_acc,phi_sh}; % see cl_model.m documentation
 
 H = permute(cl_model(wns, zts, Acl,ws,FRF_type),[2 3 1])/9.81; % get FRF and convert from m/s^2 to g
 
-% save('FlightFRF','H','fs') 
+save('../FRFs/FlightFRF','H','fs') 
 
 
 

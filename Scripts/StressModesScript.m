@@ -18,7 +18,7 @@ end
 
 psi(:,:,1) = []; % get rid of fake 1st mode - doesn't actually correspond to a mode
 
-% save('FixedBaseStressModes','psi')
+save('../ModeShapes/FixedBaseStressModes','psi')
 
 %% Flight stress modes
 clc;close all;clear all;
@@ -35,7 +35,7 @@ end
 
 psi(:,:,1) = [];
 
-% save('FlightStressModes','psi')
+save('..\ModeShapes\FlightStressModes','psi')
 
 %% Lab setup stress modes
 clc;close all;clear all;
@@ -52,7 +52,7 @@ end
 
 psi(:,:,1) = [];
 
-% save('..\ModeShapes\BARCBaseplateStressModes','psi')
+save('..\ModeShapes\BARCBaseplateStressModes','psi')
 
 
 

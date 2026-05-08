@@ -28,4 +28,4 @@ clear phi;
 phi = phi_acc;
 readme = '6 Rigid Body + Fixed-Base Modes';
 
-% save('BARCAccelModes','phi','readme')
+save('../ModeShapes/BARCAccelModes','phi','readme')

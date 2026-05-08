@@ -53,7 +53,7 @@ nflforces = size(fmat,1); % number of flight forces
 fl_force_inds = 1:nflforces;
 clc;
 
-ctrl = 0; % SLAP-Control if 1, SLAP-Buzz if 0
+ctrl = 1; % SLAP-Control if 1, SLAP-Buzz if 0
 
 %%%%%%%%%%%%%%%% SLAP-Buzz params %%%%%%%%%%%%%%%%%%%%%%%%%%%
 Sff_lab = eye(nsh,nsh); % all diagonal terms 1 N^2/Hz (can change this to scale shakers preferentially! This is just a starting point)
@@ -126,8 +126,8 @@ for ii = 1:nsims
     
 end
 
-% readme = 'SLAP-Buzz, shakers 1-8, checking if I get consistent results.';
-% save('Results_SLAPBuzz_2','actual_metrics','scales','metric_vals','readme')
+readme = 'SLAP-Buzz, shakers 1-8, checking if I get consistent results.';
+save('..\Results\Results_SLAP_Control','actual_metrics','scales','metric_vals','readme')
 %% Load and plot results (need to have variables before big for loop above loaded in)
 load ..\Results\Results_SLAP_Control.mat;
 
@@ -175,8 +175,3 @@ end
 tlt.Padding = 'compact';
 tlt.TileSpacing = 'tight';
 sgtitle('Actual Damage Metrics: Unscaled 4 Shaker Control')
-
-
-
-
-

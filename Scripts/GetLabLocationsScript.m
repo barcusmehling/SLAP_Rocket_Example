@@ -112,9 +112,11 @@ title('Select accel nodes')
 hold on
 set(h2,'ButtonDownFcn',@accelCallback)
 
-% save
-% save('LabAccelLocs','accel_locs')
-% save('LabShakerLocs','shaker_locs')
+% Select the nodes in the figures, then run the following two save commands
+% to save the locations for later use.
+
+% save('../FRFs/LabAccelNodes','accel_nodes')
+% save('../FRFs/LabShakerNodes','shaker_nodes')
 
 %% ===================== CALLBACKS =====================
 function shakerCallback(~,event)
