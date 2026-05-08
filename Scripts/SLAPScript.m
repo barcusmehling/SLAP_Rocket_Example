@@ -106,6 +106,7 @@ for ii = 1:nsims
         Sff_lab = zeros(nsh,nsh,length(fs));
     end
 
+    % Create the environment for this simulation.
     fmatrand = 1/3.04*(10.^(2*rand(size(fmat))-1)+1i*10.^(2*rand(size(fmat))-1)); % Make new forces for new env
     fmatfin = fmat.*fmatrand; % "final" force vectors to apply to make flight env
 
