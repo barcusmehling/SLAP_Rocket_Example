@@ -41,7 +41,7 @@ for ii = 1:length(Hs) % calculate FRF for each element
     Hs{ii} = H; % save to cell
 end
 
-% save('FlightStressFRFs','Hs')
+save('../FRFs/FlightStressFRFs','Hs')
 
 % Calculate stress PSDs in flight for the fun of it
 
@@ -65,7 +65,7 @@ rms_inds_fl = ind1:ind2;
 
 [sigrms_fl,sigpsd_fl,sigloc_fl] = GetStressFunc(Hs,Sff,df,rms_inds_fl,1:8);
 
-% save('FlightStressPSD','sigrms_fl','sigpsd_fl','sigloc_fl','rms_inds_fl')
+save('../Environment/FlightStressPSD','sigrms_fl','sigpsd_fl','sigloc_fl','rms_inds_fl')
 
 % Lab
 clc;close all;clear all;
@@ -106,7 +106,7 @@ for ii = 1:length(Hs)
     Hs{ii} = H;
 end
 
-% save('LabStressFRFs','Hs')
+save('../FRFs/LabStressFRFs','Hs')
 
 
 

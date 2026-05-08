@@ -44,7 +44,7 @@ FRF_type = 2; % acceleration div. by force (see cl_model doc.)
 
 H = permute(cl_model(wns, zts,Acl,ws,FRF_type),[2 3 1])/9.81; % convert to g
 
-% save('LabFRF','H','fs')
+save('../FRFs/LabFRF','H','fs')
 
 
 

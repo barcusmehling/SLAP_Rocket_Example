@@ -1,14 +1,14 @@
 % Modal Filter environment and expand out to reference DOF to check how
 % accurately modal responses are estimated
 
-clc;close all;clear all;
+% clc;close all;clear all;
 addpath ..\Functions; % for get_psd.m
 load ..\ModeShapes\BARCAccelModes; % from GetModesAtAccels
 load ..\Environment\RocketEnv;
 
 Sxx_BARC = Sxx(28:end,28:end,:); % DUT channels only (first 27 baseplate)
-filt_inds = 1:90;
-ref_inds = 40:42;
+filt_inds = 1:90; % 30 accels, 3 axis = 90 dof.
+ref_inds = 40:42; % accel we want to look at dof.
 filt_inds(ref_inds) = []; % modal filter using 87 DUT channels (exclude 3)
 
 nmodes = size(phi,2);

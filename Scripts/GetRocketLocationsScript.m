@@ -168,9 +168,11 @@ title('Select accel nodes')
 hold on
 set(h2,'ButtonDownFcn',@accelCallback)
 
-% save
-% save('FlightAccelLocs','accel_locs')
-% save('FlightForceLocs','shaker_locs')
+% Select the nodes in the figures, then run the following two save commands
+% to save the locations for later use.
+
+% save('../FRFs/FlightAccelNodes','accel_nodes')
+% save('../FRFs/FlightForceNodes','shaker_nodes')
 
 %% ===================== CALLBACKS =====================
 function shakerCallback(~,event)
