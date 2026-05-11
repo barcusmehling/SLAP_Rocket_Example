@@ -75,13 +75,14 @@ ths = 0:30:360-30; % set array of angles for baseplate circle
 r = 2.8; % close to outer radius of baseplate
 z = 90.1678; % height of top surface of baseplate
 
-base_accel_locs = []; % initialize empty matrix for accel locs on outer diameter of baseplate
+base_accel_locs = []; % initialize empty matrix for accel locs on baseplate
 for jj = 1:length(ths)
     base_accel_locs(jj,2:4) = [r*cosd(ths(jj)) r*sind(ths(jj)) z];
 end
 
-% assemble a few more potential accel locations in the center of the baseplate
-vec1 = [-1.2 0 1.2];
+% assemble a few more potential accel locatio in the center of the baseplate
+% vec1 = [-1.2 0 1.2];
+vec1 = [0];
 base_accel_locs2 = [];
 c = 1;
 for ii = 1:length(vec1)

@@ -3,7 +3,7 @@
 
 This repository contains files and code for a rocket finite element model (FEM) case study on dynamic environment testing, first presented in *"Damage Metric-Based Vibration Testing of a Rocket Component"* by Behling, Allen, Bahr, Mayes, & DeLima. The case study applies the **Scaled Lab PSD (SLAP)** method to the removable component from the BARC system. This component was selected for its common usage and because it has multiple elastic modes below 2000 Hz, making it a rich test case.
 
-> **Note:** A few files were too large for GitHub and are hosted externally. Download them at: https://byu.box.com/s/xanu0aqfyxedwmop60q8fpvicxrclrxr. After the data has been downloaded, unzip the file in the "LargeFiles" folder. There is a text document inside the folder that explains how the file path should be organized.
+> **Note:** A few files were too large for GitHub and are hosted externally. Download them at: https://byu.box.com/s/vbepspsz936w6v2sfjhw7x4hxon92tow. After the data has been downloaded, unzip the file in the "LargeFiles" folder. There is a text document inside the folder that explains how the file path should be organized.
 
 ---
 
@@ -16,7 +16,7 @@ The most important file in this repository is **`Scripts/SLAPScript.m`**, which 
 ## Repository Structure
 
 ### AbaqusFiles
-Contains `.cae` and `.inp` files used to extract stress and displacement modes for flight, lab, and fixed-base configurations. Also contains a python script that was used to translate infromation from the Abaqus *.odb files into *.mat files.
+Contains `.inp` files used to extract stress and displacement modes for flight, lab, and fixed-base configurations. Also contains a python script that was used to translate infromation from the Abaqus *.odb files into *.mat files.
 
 ---
 
