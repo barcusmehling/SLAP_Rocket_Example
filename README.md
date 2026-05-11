@@ -118,5 +118,5 @@ Code used to make FRFs, simulate tests, etc.
   -StressModesScript.m - converts .csv stress modes output from Abaqus to .mat files for use elsewhere
 
 ## Extra Note:
-  A few files were too large to include on github, and these are available at: https://byu.box.com/s/xanu0aqfyxedwmop60q8fpvicxrclrxr.
+  A few files were too large to include on github, and these are available at: https://byu.box.com/s/vbepspsz936w6v2sfjhw7x4hxon92tow.
   After downloading, place these in their respective folders as mentioned above.
