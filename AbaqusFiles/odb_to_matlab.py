@@ -5,9 +5,9 @@ Extracts modal analysis results from an Abaqus ODB file and saves them
 to a MATLAB .mat file containing:
   - phi   : mode shape matrix  [n_dof x n_modes]  sorted by node label & DOF
   - fn    : natural frequencies [n_modes x 1]  (Hz)
-  - dof   : DOF table  [n_dof x 1]  (node_label.dof_index 1-6)
+  - dof   : DOF table  [n_dof x 2]  (node_label | dof_index 1-6)
   - nodes : node coordinates  [n_nodes x 4]  (label | X | Y | Z)
-  - elems : element connectivity  (label | VTK | n1 | n2 | ...)
+  - elems_<TYPE> : element connectivity per type  (label | n1 | n2 | ...)
 
 Usage (must be run inside Abaqus Python):
   abaqus python odb_to_matlab.py --odb path/to/result.odb [options]
@@ -38,8 +38,12 @@ parser.add_argument("--mat",      default=None,  help="Output .mat file")
 parser.add_argument("--instance", default=None,  help="Assembly instance name")
 args = parser.parse_args()
 
-odb_path = os.path.abspath(args.odb)
-mat_path = args.mat or os.path.splitext(odb_path)[0] + "_Modes.mat"
+odb_path    = os.path.abspath(args.odb)
+odb_name    = os.path.splitext(os.path.basename(odb_path))[0]
+default_dir = os.path.abspath(os.path.join(os.path.dirname(odb_path), "..", "ModeShapes"))
+if not os.path.exists(default_dir):
+    os.makedirs(default_dir)
+mat_path = args.mat or os.path.join(default_dir, odb_name + "_Modes.mat")
 
 # ---------------------------------------------------------------------------
 # Open ODB
@@ -321,7 +325,6 @@ save_dict = {
 
 savemat(mat_path, save_dict, do_compression=True)
 
-print("\nSaved: {}".format(mat_path))
 print("\nVariables in .mat file:")
 print("  phi   {} - mode shape matrix (6 DOFs/node, zero-padded)".format(phi_reduced.shape))
 print("  fn    {} - natural frequencies (Hz)".format(fn.reshape(-1, 1).shape))
@@ -334,3 +337,4 @@ print("  col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ..
 print("  col 3-10 : node connectivity (zero-padded for elements with < 8 nodes)")
 print("\nDOF index legend:  1=U1  2=U2  3=U3  4=UR1  5=UR2  6=UR3")
 print("\nDone.")
+print("\nSaved: ../ModeShapes/{}_Modes.mat".format(odb_name))
