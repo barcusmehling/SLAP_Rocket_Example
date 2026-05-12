@@ -21,7 +21,7 @@ function [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,
 %%%%% Outputs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % scaling = final scale factor applied to lab PSD to cause the metrics to
 %    all be conservative (RMS is scaled by the square root of this value).
-% metrics = 4x1 vector with [fb RMS; approx stress; approx fatigue, modal resp. RMS]
+% metrics = 4x1 vector with [RMS Stress; Peak Stress; Fatigue, FB modal resp. RMS]
 %    ratios between flight and test, respectively
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
