@@ -1,23 +1,33 @@
-% Run script to select rocket force and accelerometer locations from FEM
+% Run script to select rocket force and accelerometer locations
+%
+% This script creates nodes in the shape of the Rocket and BARC instead of
+% using the node locations from the FEM. The maximum distance between the
+% grid locations generated and nodes on the FEM are calculated and
+% displayed in the Command Window
+%
 % At the end of the script, two interactive figures will be generated. One
-% will prompt you to input shaker locations, as well as their direction.
-% The other will ask for accelerometer locations. After you have finished
-% choosing the points in both figures, run the two save commands at the
-% bottom of the script.
+% will prompt you to click on the nodes where you would like to place 
+% shakers, as well as their direction. The other will ask for accelerometer
+% locations (all accelerometers are triaxial for this case study). After 
+% you have finished choosing the points in both figures, run the two save
+% commands at the bottom of the script.
 %
 % accel_nodes - nodes x 2 (local node number, fem node number)
 % shaker_nodes - nodes x 5 (local node number, fem node number,xdof,ydof,zdof)
-%% ===================== LOAD DATA =====================
+%% ===================== LOAD DATA ===================================== %%
 clc;close all;clear all;
 disp('Loading Rocket Modes...')
 load ..\LargeFiles\Full_Rocket_Modes;   % loads nodes, phi, etc.
 clc;
-% ===================== BUILD LOCATIONS for rocket =====================
-ths = 0:30:360-30;
+% ===================== BUILD LOCATIONS for rocket ====================== %
+ths = 0:30:360-30;% set array of angles for rocket locations
 
+% Define radii and height for different points along the rocket to attach
+% shakers to
 r = [1.73 3.05*ones(1,length(6.5:13:110.5)) 3.05-3.05/4:-3.05/4:0];
 zs = [0.175 6.5:13:110.5 117:6.5:117+3*6.5];
 
+% Loop through r, zeta, and theta to get all the points on the rocket
 accel_locs = [];
 c = 1;
 for ii = 1:length(r)
@@ -51,7 +61,7 @@ end
 accel_locs = [accel_locs;accel_locs2];
 accel_locs(:,1) = 1:size(accel_locs,1);
 
-% ===================== MAP TO FE NODES =====================
+% ===================== MAP TO FE NODES ==================================%
 dmin = zeros(size(accel_locs,1),1);
 accel_nodes = dmin;
 
@@ -65,7 +75,7 @@ disp([num2str(max(sqrt(dmin))) ' m'])
 
 rocket_nodes = nodes(accel_nodes,:);
 
-% %%%%%%%%%%%%%%%% DUT and baseplate nodes
+%%%%%%%%%%%%%%%%%% DUT and baseplate nodes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DUT nodes
 clc;close all;
 barc_bpnodes = 1:202365;
@@ -100,6 +110,7 @@ ys1 = [-2.5 2.5];
 ys2 = linspace(-2.5,2.5,7);
 zs = linspace(90.75,92.62,5);
 
+% Create points along the BARC where accelerometers can be placed
 barc_accel_locs = [];
 c = 1;
 for ii = 1:length(xs)
