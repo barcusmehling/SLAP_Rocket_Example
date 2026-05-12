@@ -1,4 +1,4 @@
-# NOTE: We are in currently updating the FEM of the rocket to fix some issues, and also greatly expanding the documentation. Watch for an update by the end of May 2026
+# NOTE: We are currently updating the FEM of the rocket to fix some issues, and also greatly expanding the documentation. Watch for an update by the end of May 2026
 # SLAP Rocket Example
 
 This repository contains files and code for a rocket finite element model (FEM) case study on dynamic environment testing, first presented in *"Damage Metric-Based Vibration Testing of a Rocket Component"* by Behling, Allen, Bahr, Mayes, & DeLima. The case study applies the **Scaled Lab PSD (SLAP)** method to the removable component from the BARC system. This component was selected for its common usage and because it has multiple elastic modes below 2000 Hz, making it a rich test case.
