@@ -12,9 +12,9 @@ If you would like to try SLAP on a different system, the workflow detailing how 
 
 ---
 
-## Workflow
+## Workflow for Recreating Matlab Files for a Different FEM
 
-The general workflow is given in the image below. The user should refer back to this often to know what step in the process they are on. The documentation following the first flow chart breaks down specific parts of this flow chart where needed.
+The general workflow is given in the image below.  The documentation following the first flow chart breaks down specific parts of this flow chart where needed.
 
 ![Workflow Diagram](Assets/Revised%20SLAP%20Workflow.svg)
 
@@ -44,17 +44,18 @@ After the jobs have finished running, open up a command prompt and navigate to "
  - This will run the python script that tranlates the displacement data in the odb file for each mode into a *.mat file **with the same name**. You will need to do this for all of the models that you run.
  - (**Disclaimer: If you change the names of the input files above you will need to change all of the file names in the load commands for the MatLab scripts that are used.**)
  - The converter explains the format of the variables that are exported from Abaqus, for example:
- **Variables in .mat file:**
-  phi   (752688, 6) - mode shape matrix (6 DOFs/node, zero-padded)
-  fn    (6, 1) - natural frequencies (Hz)
-  dof   (366624, 1) - active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)
-    DOF index legend:  1=U1  2=U2  3=U3  4=UR1  5=UR2  6=UR3
-  nodes (125448, 4) - (label | X | Y | Z)
-  elems (101790, 10) - (label | vtk_type | n1..n8)
-    Element matrix column layout:
-        col 1    : element label
-        col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ...)
-        col 3-10 : node connectivity (zero-padded for elements with < 8 nodes)
+ 
+ **Variables in .mat file:**  
+ > phi   (752688, 6) - mode shape matrix (6 DOFs/node, zero-padded)  
+ > fn    (6, 1) - natural frequencies (Hz)  
+ > dof   (366624, 1) - active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)  
+ > &emsp;  DOF index legend:  1=U1  2=U2  3=U3  4=UR1  5=UR2  6=UR3  
+ > nodes (125448, 4) - (label | X | Y | Z)  
+ > elems (101790, 10) - (label | vtk_type | n1..n8)  
+ > &emsp;  Element matrix column layout:  
+ > &emsp;&emsp;  col 1    : element label  
+ > &emsp;&emsp;  col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ...)  
+ > &emsp;&emsp;  col 3-10 : node connectivity (zero-padded for elements with < 8 nodes)
 
 ### Stress
 ![Stress Explanation](Assets/Stress%20Explanation.svg)
