@@ -1,9 +1,9 @@
-function [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,Ts,p)
+function [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,Ts,p,varargin)
 % Apply Scaled Lab PSD method (SLAP) to create a specification for a
 % vibration qualification test
 % Marcus Behling | 10/15/2025
 %
-% [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,Ts,p)
+% [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,Ts,p);
 %
 %%%%% Inputs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Sxx_lab = (No x No) lab PSDs to be modal filtered
@@ -21,9 +21,20 @@ function [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,
 %%%%% Outputs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % scaling = final scale factor applied to lab PSD to cause the metrics to
 %    all be conservative (RMS is scaled by the square root of this value).
-% metrics = 4x1 vector with [RMS Stress; Peak Stress; Fatigue, FB modal resp. RMS]
+% metrics = 4x1 vector with [RMS Stress; Peak Stress; Fatigue, RMS FB modal resp.]
 %    ratios between flight and test, respectively
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% To exclude a metric, use:
+% [scaling,metrics] = SLAPfunc(Sxx_lab,Sxx_fl,phi,fs,fb_inds,rms_inds,bf,Ts,p,use_ind);
+%   i.e. use_ind=[1,2,3] to use the first three metrics only.
+%
+
+if nargin>9
+    use_ind=varargin{1};
+else
+    use_ind=[1:4]; % Use all metrics by default.
+end
 
 df = fs(2)-fs(1); % frequency spacing for calculating RMS
 ws = 2*pi*fs; % angular frequency vector
@@ -44,16 +55,15 @@ dflag = 0; % calculate acceleration
 Sqq_lab = ModalFilterFunc(Sxx_lab,phi,fs,fb_inds,dflag);
 Sqq_fl = ModalFilterFunc(Sxx_fl,phi,fs,fb_inds,dflag);
 qrats = GetModalRMSRatio(Sqq_lab,Sqq_fl,rms_inds,df);
-% qrats = 1e20;
 
 % Calculate candidate scaling factors (Eq. 26)
-sc_factor1 = sig_rms_ratio^-2; 
-sc_factor2 = sig_peak_ratio^-2;
-sc_factor3 = fatigue_ratio^(-2/bf);
-sc_factor4 = max(qrats.^-2);
+sc_factors(1) = sig_rms_ratio^-2; 
+sc_factors(2) = sig_peak_ratio^-2;
+sc_factors(3) = fatigue_ratio^(-2/bf);
+sc_factors(4) = max(qrats.^-2);
 
 % retain largest of the PSD scaling factors as the final scaling
-scaling = abs(max([sc_factor1 sc_factor2 sc_factor3 sc_factor4])); 
+scaling = abs(max(sc_factors(use_ind))); 
 
 % scaled values of metrics
 metrics = abs([sqrt(scaling)*sig_rms_ratio sqrt(scaling)*sig_peak_ratio scaling^(bf/2)*fatigue_ratio sqrt(scaling)*min(qrats)]); % get rid of residual (~0) imaginary parts, if any  

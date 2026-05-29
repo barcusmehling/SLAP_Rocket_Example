@@ -1,7 +1,4 @@
-# We are in currently updating the FEM of the rocket to fix some issues, and also greatly expanding the documentation. Watch for an update by the end of May 2026
-# SLAP Rocket Example
-
-This repository contains files and code for a rocket finite element model (FEM) case study on dynamic environment testing, first presented in *"Damage Metric-Based Vibration Testing of a Rocket Component"* by Behling, Allen, Bahr, Mayes, & DeLima. The case study applies the **Scaled Lab PSD (SLAP)** method to the removable component of the BARC system. This component was selected for its common usage and because it has multiple elastic modes below 2000 Hz, making it a rich test case.
+\This repository contains files and code for a rocket finite element model (FEM) case study on dynamic environment testing, first presented in *"Damage Metric-Based Vibration Testing of a Rocket Component"* by Behling, Allen, Bahr, Mayes, & DeLima. The case study applies the **Scaled Lab PSD (SLAP)** method to the removable component of the BARC system. This component was selected for its common usage and because it has multiple elastic modes below 2000 Hz, making it a rich test case.
 
 > **Note:** A few files were too large for GitHub and are hosted externally. Download them at: https://byu.box.com/s/vbepspsz936w6v2sfjhw7x4hxon92tow. After the data has been downloaded, unzip the file in the "LargeFiles" folder. There is a text document inside the folder that explains how the file path should be organized.
 
@@ -9,7 +6,7 @@ This repository contains files and code for a rocket finite element model (FEM) 
 
 ## Getting Started
 
-The most important file in this repository is **`Scripts/SLAPScript.m`**, which was used to simulate the tests whose results appear in the paper. Start there to reproduce the paper's findings.
+The primary entry point for the repository is the **`Scripts/SimulateTestScript.m`**, which explains the various data files and shows how they are used to simulate the various tests that are presented in the paper.  It first simulates a 6DOF test, and compares the peak stresses in the component between test and flight.  SLAP-Control and SLAP-Buzz tests are also presented.  This is elaborated further in **`Scripts/SLAPMCSScript.m`**, which simulates an ensemble of tests and produces histograms comparing the failure metrics to those from flight.
 
 If you would like to try SLAP on a different system, the workflow detailing how to generate the *.mat files used in the paper is given below.
 
@@ -42,7 +39,22 @@ To start, you will want to run the input decks that are located in "AbaqusFiles"
 ### Extracting Mode Shapes
 ![Mode Shape Explanation](Assets/Mode%20Shapes%20Explanation.svg)
 
-After the jobs have finished running, open up a command prompt and navigate to "AbaqusFiles" folder. This is where the .odb files should be saved when the analyses are run. If they are saved elsewhere, move them to the "AbaqusFiles" folder before continuing. In the command prompt, type "abaqus python odb_to_matlab.py --odb <Name_Of_Your_Model>.odb". This will run the python script that tranlates the displacement data in the odb file for each mode into a format that MatLab can access and read. You will need to do this for all of the models that you run. (**Disclaimer: If you change the names of the input files above you will need to change all of the file names in the load commands for the MatLab scripts that are used.**)
+After the jobs have finished running, open up a command prompt and navigate to "AbaqusFiles" folder. This is where the .odb files should be saved when the analyses are run. If they are saved elsewhere, move them to the "AbaqusFiles" folder before continuing. In the command prompt, type:
+ - abaqus python odb_to_matlab.py --odb <Name_Of_Your_Model>.odb
+ - This will run the python script that tranlates the displacement data in the odb file for each mode into a *.mat file **with the same name**. You will need to do this for all of the models that you run.
+ - (**Disclaimer: If you change the names of the input files above you will need to change all of the file names in the load commands for the MatLab scripts that are used.**)
+ - The converter explains the format of the variables that are exported from Abaqus, for example:
+ **Variables in .mat file:**
+  phi   (752688, 6) - mode shape matrix (6 DOFs/node, zero-padded)
+  fn    (6, 1) - natural frequencies (Hz)
+  dof   (366624, 1) - active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)
+    DOF index legend:  1=U1  2=U2  3=U3  4=UR1  5=UR2  6=UR3
+  nodes (125448, 4) - (label | X | Y | Z)
+  elems (101790, 10) - (label | vtk_type | n1..n8)
+    Element matrix column layout:
+        col 1    : element label
+        col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ...)
+        col 3-10 : node connectivity (zero-padded for elements with < 8 nodes)
 
 ### Stress
 ![Stress Explanation](Assets/Stress%20Explanation.svg)
@@ -52,21 +64,21 @@ After the odb file is generated, open up the odb in Abaqus CAE and go to the Vis
 ### Location Scripts
 ![Location Explanation](Assets/Location%20Script%20Explanation.svg)
 
-The Locations scripts are used to determine where you want your force inputs and accelerometers on both the rocket and the lab setup. For these scripts, two interactive figures are generated with a grid of points that can be selected. The script does not automatically save the points that you select. We recommend selecting all of the points that you would like for your test on both figures, and then running the two save commands at the bottom of the script before the function definitions. It is also uncertain whether order matters when picking points. For example, if you chose 10 accelerometer locations for flight, you should choose the same 10 locations, in the same order, on the test stand.
+The Locations scripts are used to determine where you want your force inputs and accelerometers on both the rocket and the lab setup. For these scripts, two interactive figures are generated with a grid of points that can be selected. The script does not automatically save the points that you select. We recommend selecting all of the points that you would like for your test on both figures, and then running the two save commands at the bottom of the script before the function definitions. If you chose 10 accelerometer locations for flight, you should choose the same 10 locations, in the same order, on the test stand.
 
 ### Setup Suite
 ![Setup Explanation](Assets/Setup%20Suite%20Explanation.svg)
 
-Before you can run SLAP, a variety of FRFs need to be generated. The scripts needed to generate the FRFs and flight environment are what we call the setup suite. There are five scripts that need to be run in order to have all the data needed to perform SLAP. The FRF scripts can be run in any order, but they must all be ran before the FlightEnvironmentScript.m and GetModesAtAccels.m scripts.
+Before you can run SLAP, a variety of FRFs need to be generated. The scripts needed to generate the FRFs and flight environment are what we call the setup suite. There are five scripts that need to be run in order to have all the data needed to perform SLAP. The FRF scripts can be run in any order, but they must all be run before the FlightEnvironmentScript.m and GetModesAtAccels.m scripts.
 
 ### Modal Filter Check
-After the Setup Suite has been run, it is recommended that the user runs ModalFilterScript.m, to make sure that the chosen accelerometer locations are enough to capture all of the modes of interest. SLAPScript.m can be run without this step, but it is a good sanity check.
+After the Setup Suite has been run, it is recommended that the user runs ModalFilterScript.m, to make sure that the chosen accelerometer locations are enough to capture all of the modes of interest. SLAPMCSScript.m can be run without this step, but it is a good sanity check.
 
 ### Simulate Test Script
-SLAPScript.m runs SLAP on 100 randomized environments to know if it would work reliably. Before running all 100 cases, it is recommended that the user run SimulateTestScript.m. This simulates one environment and displays the PSDs so that the user can get a feel for what each iteration of the SLAPScript.m looks like. Again, running this script before SLAPScript.m is not necessary, but a good check.
+As mentioned previously, you can now run the **`Scripts/SimulateTestScript.m`**, simulates the various tests that are presented in the paper.  Additionally, the SLAPMCSScript.m runs SLAP on 100 randomized environments where noise is added to each to test the robustness of the methods. Before running all 100 cases, it is recommended that the user run SimulateTestScript.m. This simulates one environment and displays the PSDs so that the user can get a feel for what each iteration of the SLAPMCSScript.m looks like.  Note that the SimulateTestScript.m does not apply noise to the environment; it shows the result for the nominal environment.
 
 ### SLAP 'em Silly
-You're ready run SLAPScript.m
+You're ready run SLAP in the **`Scripts/SimulateTestScript.m`**
 
 ---
 

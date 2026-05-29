@@ -1,7 +1,7 @@
 % Simulate many SLAP tests and make plots for UNSGC 2026 paper
 % Marcus Behling | 2/18/2026
 clc;close all;clear all;
-%% Load Files (Takes ~30 seconds because files big)
+%% Load Files (Takes ~30 seconds because files are big)
 addpath ..\Functions\;
 
 disp('Loading Flight FRF...')
@@ -21,7 +21,7 @@ load ..\Environment\Flight_Forces; % nominal force spectra for the 8 forcing vec
 disp('Loading Lab FRF...')
 load ..\FRFs\Lab_FRF; % control FRF
 H_lab = H; clear H;
-sh_inds = 1:7; % Select which of the potential shaker locations to use
+sh_inds = 1:6; % Select which of the potential shaker locations to use
 nsh = length(sh_inds); % number of shakers
 
 disp('Loading Flight Stress FRFs...')
@@ -63,7 +63,7 @@ p = 0.99; % 99 percent confidence level - "we have 99 percent confidence that th
 nflforces = size(fmat,1); % number of flight forces
 fl_force_inds = 1:nflforces;
 
-ctrl = 0; % SLAP-Control if 1, SLAP-Buzz if 0
+ctrl = 1; % SLAP-Control if 1, SLAP-Buzz if 0
 
 %%%%%%%%%%%%%%%% SLAP-Buzz params %%%%%%%%%%%%%%%%%%%%%%%%%%%
 Sff_lab = eye(nsh,nsh); % all diagonal terms 1 N^2/Hz (can change this to scale shakers preferentially! This is just a starting point)
@@ -93,7 +93,8 @@ for ii = 1:nf
     Sxx_lab(:,:,ii) = H_lab(:,sh_inds,ii)*Sff_lab*H_lab(:,sh_inds,ii)';
     Sff_lab_temp(:,:,ii) = Sff_lab; 
 end
-Sff_lab = Sff_lab_temp; % swap with original to define at all flines
+Sff_lab = Sff_lab_temp; % replace original with this version, which has values at all frequency lines.
+    clear Sff_lab_temp
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for ii = 1:nsims
@@ -120,14 +121,17 @@ for ii = 1:nsims
             Sxx_lab(:,:,jj) = H_lab(:,sh_inds,jj)*Sff_lab(:,:,jj)*H_lab(:,sh_inds,jj)'; % calculate lab environment
         end
     end
-
+    
+    % Compute the true stresses in the flight and lab environments.
     [sigrms_fl,sigpsd_fl,sigloc_fl] = GetStressFunc(Hs_fl,Sff_fl,df,rms_inds,fl_force_inds); % RMS stress and stress PSD in flight env
     [sigrms_lab,sigpsd_lab,sigloc_lab] = GetStressFunc(Hs_lab,Sff_lab,df,rms_inds,sh_inds); % RMS stress and stress PSD in flight env
-
+    
+    % Compute the SLAP damage metrics and the scaling required to make the
+    % test conservative.
     [scaling,metric_vals(ii,:)] = SLAPfunc(Sxx_lab(filt_inds,filt_inds,:),Sxx_fl(filt_inds,filt_inds,:),phi_filt,fs,fb_inds,rms_inds,bf,Ts,p); % Apply SLAP
 
     % Create a plot comparing the spectra at a point:
-        % {
+        %{
         ref_accs = 67:69; % reference channels (a random triax on the DUT)
         plotTriaxPSD(fs,Sxx_fl,Sxx_lab*scaling,ref_accs)
         pause
@@ -144,15 +148,16 @@ for ii = 1:nsims
     
 end
 
-readme = 'SLAP-Control, shakers 1-7, checking if I get consistent results.';
-save('..\Results\Results_SLAP_Control','actual_metrics','scales','metric_vals','readme')
+readme = 'SLAP-Control, shakers 1-6, checking if I get consistent results.';
+save('..\Results\Results_SLAP_Control_test','actual_metrics','scales','metric_vals','readme')
+
 %% Load and plot results (need to have variables before big for loop above loaded in)
-load ..\Results\Results_SLAP_Control.mat;
+load ..\Results\Results_SLAP_Control_Behling.mat;
 
 titles = {'Peak Stress Ratio','RMS Stress Ratio','Fatigue Damage Ratio'};
 nbins = 16;
 
-figure('Units','normalized','Position',[0.1 0.1 0.8 0.4]);   % [left bottom width height]
+figure(1); set(gcf,'Units','normalized','Position',[0.1 0.1 0.8 0.4]);   % [left bottom width height]
 tlt = tiledlayout(1,3);
 for jj = 1:3
     nexttile;
@@ -169,9 +174,9 @@ end
 
 tlt.Padding = 'compact';
 tlt.TileSpacing = 'tight';
-sgtitle('Actual Damage Metrics: SLAP-Control, 4 Shakers')
+sgtitle(['Actual Damage Metrics: SLAP-Control with ',num2str(length(sh_inds)),' Shakers'])
 
-figure('Units','normalized','Position',[0.1 0.1 0.8 0.4]);   % [left bottom width height]
+figure(2); set(gcf,'Units','normalized','Position',[0.1 0.1 0.8 0.4]);   % [left bottom width height]
 tlt = tiledlayout(1,3);
 for jj = 1:3
     nexttile;
@@ -192,4 +197,4 @@ end
 
 tlt.Padding = 'compact';
 tlt.TileSpacing = 'tight';
-sgtitle('Actual Damage Metrics: Unscaled 4 Shaker Control')
+sgtitle(['Actual Damage Metrics: Unscaled ',num2str(length(sh_inds)),' Shaker Control'])

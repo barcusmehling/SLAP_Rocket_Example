@@ -1,4 +1,19 @@
 % Same as GetRocketLocationsScript.m but for lab config
+%
+% This script creates nodes in the shape of the Rocket and BARC instead of
+% using the node locations from the FEM. The maximum distance between the
+% grid locations generated and nodes on the FEM are calculated and
+% displayed in the Command Window
+%
+% At the end of the script, two interactive figures will be generated. One
+% will prompt you to click on the nodes where you would like to place 
+% shakers, as well as their direction. The other will ask for accelerometer
+% locations (all accelerometers are triaxial for this case study). After 
+% you have finished choosing the points in both figures, run the two save
+% commands at the bottom of the script.
+%
+% accel_nodes - nodes x 2 (local node number, fem node number)
+% shaker_nodes - nodes x 5 (local node number, fem node number,xdof,ydof,zdof)
 clc;close all;clear all;
 disp('Loading Lab Modes...')
 load ..\ModeShapes\BARC_Baseplate_Modes;   % loads nodes, phi, etc.
@@ -6,6 +21,8 @@ clc;
 % DUT and baseplate nodes
 % DUT nodes
 
+%% Create a simplified geometry showing a smaller number of candidate
+% accelerometer locations.
 ths = 0:30:360-30; % set array of angles for baseplate circle
 r = 2.8; % close to outer radius of baseplate
 z = 90.1678; % height of top surface of baseplate
@@ -64,14 +81,13 @@ for ii = 1:length(ys3)
     end
 end
 
-
 barc_base_accel_locs = [barc_accel_locs;base_accel_locs]; % assemble into one matrix
 barc_base_accel_locs(:,2:4) = barc_base_accel_locs(:,2:4) / 39.37;
 
 figure;
 scatter3(barc_base_accel_locs(:,2),barc_base_accel_locs(:,3),barc_base_accel_locs(:,4),'b','filled')
 
-% find FEM nodes
+% find FEM nodes that are closest to these potential locations.
 dmin = zeros(size(barc_base_accel_locs,1),1); % next few lines get FEM locations corresponding to those in base_dut_accel_locs
 barc_base_FEM_nodes = dmin; % initialize FEM nodes of baseplate and DUT to zeros
 
@@ -80,7 +96,7 @@ for k = 1:size(barc_base_accel_locs,1) % inc through locs
     [dmin(k), barc_base_FEM_nodes(k)] = min(d);
 end
 
-disp('Maximum distance between accel location and FE node:')
+disp('Maximum distance between potential accel locations and FE node:')
 disp(max(sqrt(dmin)))
 
 FEMnodes = nodes(barc_base_FEM_nodes,:);
@@ -88,7 +104,7 @@ FEMnodes = nodes(barc_base_FEM_nodes,:);
 figure;
 scatter3(FEMnodes(:,2),FEMnodes(:,3),FEMnodes(:,4),'r','filled') % plot dut and base accels
 
-% ===================== SHARED STATE =====================
+% ===================== VARIABLES SET BY THE GUI =====================
 shaker_nodes = [];   % [order nodeID ux uy uz]
 accel_nodes  = [];   % [order nodeID]
 shaker_count = 0;
@@ -99,7 +115,7 @@ figure('Position',[500 200 350 550])
 h1 = scatter3(FEMnodes(:,2),FEMnodes(:,3),FEMnodes(:,4),25,'k','filled');
 xlabel('x'); ylabel('y'); zlabel('z')
 grid on; axis equal;
-title('Select flight force nodes')
+title('Select lab force nodes and directions')
 hold on
 set(h1,'ButtonDownFcn',@shakerCallback)
 

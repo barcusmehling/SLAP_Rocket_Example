@@ -1,24 +1,31 @@
-% Run script to select rocket force and accelerometer locations
+% Script to select rocket force and accelerometer locations
 %
-% This script creates nodes in the shape of the Rocket and BARC instead of
-% using the node locations from the FEM. The maximum distance between the
-% grid locations generated and nodes on the FEM are calculated and
-% displayed in the Command Window
+% This script creates a set of candidate nodes in the shape of the Rocket
+% and BARC. Then, the maximum distance between these candidate locations
+% and the FEM grid locations are calculated.
 %
-% At the end of the script, two interactive figures will be generated. One
-% will prompt you to click on the nodes where you would like to place 
-% shakers, as well as their direction. The other will ask for accelerometer
-% locations (all accelerometers are triaxial for this case study). After 
-% you have finished choosing the points in both figures, run the two save
+% Two interactive figures will be generated. One will prompt you to click
+% on the nodes where you would like to place shakers, as well as their
+% direction. The other will ask for accelerometer locations (all
+% accelerometers are triaxial for this case study). After  you have
+% finished choosing the points in both figures, run the two save  
 % commands at the bottom of the script.
+%
+% If you have already defined lab accelerometer locations, you can use
+% those to place the accelerometers at the same locations in flight, using
+% the cells after the "return" statement.
 %
 % accel_nodes - nodes x 2 (local node number, fem node number)
 % shaker_nodes - nodes x 5 (local node number, fem node number,xdof,ydof,zdof)
-%% ===================== LOAD DATA ===================================== %%
-clc;close all;clear all;
+%
+%% ===================== LOAD FEM DATA ================================= %%
+close all;clear all;
 disp('Loading Rocket Modes...')
 load ..\LargeFiles\Full_Rocket_Modes;   % loads nodes, phi, etc.
 clc;
+
+%% Create a simplified geometry showing a smaller number of candidate
+% accelerometer locations.
 % ===================== BUILD LOCATIONS for rocket ====================== %
 ths = 0:30:360-30;% set array of angles for rocket locations
 
@@ -152,7 +159,7 @@ for k = 1:size(barc_base_accel_locs,1) % inc through locs
     [dmin(k), barc_base_FEM_nodes(k)] = min(d);
 end
 
-disp('Maximum distance between accel location and FE node:')
+disp('Maximum distance between candidate accel locations and FE nodes:')
 disp(max(sqrt(dmin)))
 
 rocket_nodes2 = basedut_FEMnodes(barc_base_FEM_nodes,:);
@@ -183,11 +190,50 @@ title('Select accel nodes')
 hold on
 set(h2,'ButtonDownFcn',@accelCallback)
 
+return % Run the rest of this only if needed
+
 % Select the nodes in the figures, then run the following two save commands
 % to save the locations for later use.
 
 % save('../FRFs/Flight_Accel_Nodes','accel_nodes')
 % save('../FRFs/Flight_Force_Nodes','shaker_nodes')
+
+%% To Re-use the DUT locations from the GetLabLocationsScript:
+load('../FRFs/Lab_Accel_Nodes') % contains 'accel_nodes'
+LabNodes=load('../ModeShapes/BARC_Baseplate_Modes.mat');
+LabNodes=LabNodes.nodes; % keep only nodes matrix
+LabLocs = LabNodes(accel_nodes(:,2),:);
+
+% Loop over FEM nodes to find the nearest node to each of these.
+dmin = zeros(size(LabLocs,1),1); % next few lines get FEM locations corresponding to those in base_dut_accel_locs
+barc_FEM_nodes = dmin; % initialize FEM nodes of baseplate and DUT to zeros
+
+for k = 1:size(LabLocs,1) % inc through locs
+    d = sum((nodes(:,2:4) - LabLocs(k,2:4)).^2,2);
+    [dmin(k), barc_FEM_nodes(k)] = min(d);
+end
+disp('Maximum distance between accel location and FE node:')
+disp(max(sqrt(dmin)))
+
+accel_nodes=[[1:length(barc_FEM_nodes)].',barc_FEM_nodes(:,1)]; 
+
+%% Plot to check that the Flight and Lab Accel Locations Match:
+
+% Load nodes and locs for flight
+FlNodes=load('..\LargeFiles\Full_Rocket_Modes.mat')
+FlNodes=FlNodes.nodes;
+load ..\FRFs\Flight_Accel_Nodes.mat; % accel_nodes
+    fl_accel_nodes=accel_nodes;
+% Load nodes and locs for lab
+LabNodes=load('../ModeShapes/BARC_Baseplate_Modes.mat')
+LabNodes=LabNodes.nodes;
+load ..\FRFs\Lab_Accel_Nodes.mat; % accel_nodes
+    
+figure(5);
+plot3(FlNodes(fl_accel_nodes(:,2),2),FlNodes(fl_accel_nodes(:,2),3),FlNodes(fl_accel_nodes(:,2),4),'o')
+hold on; 
+    plot3(LabNodes(accel_nodes(:,2),2),LabNodes(accel_nodes(:,2),3),LabNodes(accel_nodes(:,2),4),'r.');
+hold off
 
 %% ===================== CALLBACKS =====================
 function shakerCallback(~,event)
