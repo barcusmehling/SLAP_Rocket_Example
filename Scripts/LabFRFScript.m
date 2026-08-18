@@ -5,8 +5,8 @@ clc;close all;clear all;
 addpath ..\Functions\; % for cl_model function
 
 load ..\ModeShapes\BARC_Baseplate_Modes; % load lab modes and accel and shaker locs
-load ..\FRFs\Lab_Accel_Nodes.mat;
-load ..\FRFs\Lab_Shaker_Nodes;
+load ..\FRFs\Lab_Accel_Nodes.mat; % accel_nodes
+load ..\FRFs\Lab_Shaker_Nodes;% shaker_nodes
 
 % get lab FRF matrix
 clc;

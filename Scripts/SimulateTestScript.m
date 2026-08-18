@@ -19,6 +19,8 @@ load ..\FRFs\Lab_FRF; % control FRF
     H_lab = H; clear H;
     % The accelerometers are placed in the FEM nodes in "accel_nodes" in:
     %   load('../FRFs/Lab_Accel_Nodes.mat')
+    % Create DOF vector to keep track of these.
+    DOFH = kron([1:39].',ones(3,1))+kron(ones(39,1),[1:3].'/10);
     % The shaker nodes and directions are defined in "shaker_nodes"
     %   load('../FRFs/Lab_Shaker_Nodes.mat')
     % The node locations are defined in "nodes" in:
@@ -63,40 +65,25 @@ ref_accs = 67:69; % reference channels (a triax on the DUT)
 %% Compute the Response of the DUT when controlled in the 6DOF Lab Test
 Sxx_est = zeros(size(Sxx)); % environment obtained in the lab
 
-nsh = size(H_lab,2); % number of shakers - Use all by default.
+nsh = 3; %size(H_lab,2); % number of shakers - Use all by default.
 sh_inds = 1:nsh; % Select which of the potential shaker locations to use
 Sff_lab = zeros(nsh,nsh,length(fs)); % lab force PSD matrix
 
 for ii = 1:length(fs) % calculate shaker forces and lab env at each frequency
-    cnthresh = 0.01*max(svd(H_lab(ctrl_accs,:,ii))); % condition number threshold = 0.01 * largest SV of FRF mat
+    cnthresh = 0.01*max(svd(H_lab(ctrl_accs,1:nsh,ii))); % condition number threshold = 0.01 * largest SV of FRF mat
     % following line calculates forces while implementing CN threshold. See
     % pinv.m documentation for more detail.
-    Sff_lab(:,:,ii) = pinv(H_lab(ctrl_accs,:,ii),cnthresh)*Sxx(ctrl_accs,ctrl_accs,ii)*pinv(H_lab(ctrl_accs,:,ii),cnthresh)';
-    Sxx_est(:,:,ii) = H_lab(:,:,ii)*Sff_lab(:,:,ii)*H_lab(:,:,ii)'; % calculate lab response at all DOF
+    Sff_lab(:,:,ii) = pinv(H_lab(ctrl_accs,1:nsh,ii),cnthresh)*Sxx(ctrl_accs,ctrl_accs,ii)*pinv(H_lab(ctrl_accs,1:nsh,ii),cnthresh)';
+    Sxx_est(:,:,ii) = H_lab(:,1:nsh,ii)*Sff_lab(:,:,ii)*H_lab(:,1:nsh,ii)'; % calculate lab response at all DOF
 end
+
+% Plot response at a control accelerometer
+envpsd_ctrl = get_psd(Sxx(ctrl_accs,ctrl_accs,:)); % flight environment PSDs at control accels
+labpsd_ctrl = get_psd(Sxx_est(ctrl_accs,ctrl_accs,:)); % '' lab env
 
 % Extract diagonal terms from SDMs to plot only those PSDs below.
 envpsd = get_psd(Sxx(ref_accs,ref_accs,:)); % flight environment PSDs at DUT ref accels
 labpsd = get_psd(Sxx_est(ref_accs,ref_accs,:)); % '' lab env
-
-% Plot reference responses in flight vs. lab
-figure(1); set(gcf,'Units','normalized','Position',[0.1 0.1 0.8 0.4]);
-tlt = tiledlayout(1,3);
-titles = {'Ref X','Ref Y','Ref Z'};
-for ii = 1:3
-    nexttile;
-    semilogy(fs,abs(envpsd(ii,:)),'k',fs,abs(labpsd(ii,:)),'b','Linewidth',2)
-    xlabel('Frequency (Hz)','interpreter','tex')
-    grid on;
-    xlim([10 2000])
-    if ii == 1
-        legend('Flight','Test')
-    end
-    title(titles{ii})
-end
-ylabel(tlt,'Acceleration PSD (g^2/Hz)','interpreter','tex')
-tlt.TileSpacing = 'tight';
-tlt.Padding = 'tight';
 
 %% Stress analysis
 ind1 = find(fs >= 95,1);
@@ -131,16 +118,17 @@ p = 0.99; % 99 percent confidence level - "we have 99 percent confidence that th
 
 % Compute the SLAP damage metrics and the scaling required to make the
 % test conservative.
-[scaling,metric_vals] = SLAPfunc(Sxx_est(filt_inds,filt_inds,:),Sxx(filt_inds,filt_inds,:),...
+[scaling_control,metric_vals] = SLAPfunc(Sxx_est(filt_inds,filt_inds,:),Sxx(filt_inds,filt_inds,:),...
     phi_filt,fs,fb_inds,rms_inds,bf,Ts,p,[1:3]); % Apply SLAP
 disp('SLAP Metrics-Control: [RMS Stress; Peak Stress; Fatigue, RMS FB modal resp.]');
+scaling_control
 metric_vals
 
 % Add line for SLAP lab stress PSD - in practice one wouldn't know this,
 % only the response, such as those shown in figure(1).
 figure(2);
 hold on;
-semilogy(fs,abs(sigpsd_lab)*scaling,'--','Linewidth',2)
+semilogy(fs,abs(sigpsd_lab)*scaling_control,'--','Linewidth',2)
 hold off;
 legend('Flight','Lab Test','SLAP-Control Test')
 
@@ -148,6 +136,8 @@ legend('Flight','Lab Test','SLAP-Control Test')
 
     %%%%%%%%%%%%%%%% SLAP-Buzz Environment %%%%%%%%%%%%%%%%%%%%%%%%%%%
     Sff_buzz = eye(nsh,nsh); % all diagonal terms 1 N^2/Hz (can change this to scale shakers preferentially! This is just a starting point)
+    %%%%%%%%% MSA Hack in here and update forcing per SLAP-PS %%%%%%%%%%%%
+        % Sff_buzz = diag([0.005e-5,5e-5,5e-5,5e-5,5e-5,5e-5]);
     nf = length(fs);
 
     % Create off-diagonal terms for forcing spectral density matrix.
@@ -180,6 +170,7 @@ legend('Flight','Lab Test','SLAP-Control Test')
     
     % Pull out Buzz PSD for plotting
     buzzpsd = get_psd(Sxx_buzz(ref_accs,ref_accs,:)); % '' lab env
+    buzzctrlacc = get_psd(Sxx_buzz(ctrl_accs,ctrl_accs,:)); % '' lab env
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Compute the SLAP damage metrics and the scaling required to make the
@@ -199,20 +190,21 @@ figure(2);
 hold on;
 semilogy(fs,abs(sigpsd_buzz)*scaling_buzz,'-.','Linewidth',2)
 hold off;
-legend('Flight','Lab Test','SLAP-Control Test','SLAP-Buzz Test')
+legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
 
 % Plot reference responses in flight vs. lab
-figure(3); set(gcf,'Units','normalized','Position',[0.1 0.1 0.8 0.4]);
+figure(3); set(gcf,'Units','normalized','Position',[0.1     0.23          0.4         0.25]);
 tlt = tiledlayout(1,3);
 titles = {'Ref X','Ref Y','Ref Z'};
 for ii = 1:3
     nexttile;
-    semilogy(fs,abs(envpsd(ii,:)),'k',fs,abs(labpsd(ii,:)),'b',fs,scaling_buzz*abs(buzzpsd(ii,:)),'Linewidth',2)
+    semilogy(fs,abs(envpsd(ii,:)),'k',fs,abs(labpsd(ii,:)),'b',...
+        fs,scaling_control*abs(labpsd(ii,:)),'--',fs,scaling_buzz*abs(buzzpsd(ii,:)),'Linewidth',2)
     xlabel('Frequency (Hz)','interpreter','tex')
     grid on;
     xlim([10 2000])
     if ii == 1
-        legend('Flight','6 DOF Test','Buzz Test')
+        legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
     end
     title(titles{ii})
 end
@@ -220,4 +212,46 @@ ylabel(tlt,'Acceleration PSD (g^2/Hz)','interpreter','tex')
 tlt.TileSpacing = 'tight';
 tlt.Padding = 'tight';
 
+% Plot reference responses in flight vs. lab
+figure(4); set(gcf,'Units','normalized','Position',[0.1  0.55  0.4  0.25]);
+tlt = tiledlayout(1,3);
+titles = {'Control 1X','Control 1Y','Control 1Z'};
+for ii = 1:3
+    nexttile;
+    semilogy(fs,abs(envpsd_ctrl(ii,:)),'k',fs,abs(labpsd_ctrl(ii,:)),'b',...
+        fs,scaling_control*abs(labpsd_ctrl(ii,:)),'--',...
+        fs,scaling_buzz*abs(buzzctrlacc(ii,:))); set(get(gca,'Children'),'LineWidth',2)
+    xlabel('Frequency (Hz)','interpreter','tex')
+    grid on;
+    xlim([10 2000])
+    if ii == 1
+        legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
+    end
+    title(titles{ii})
+end
+ylabel(tlt,'Acceleration PSD (g^2/Hz)','interpreter','tex')
+tlt.TileSpacing = 'tight';
+tlt.Padding = 'tight';    
+
+%% Simulate a SLAP-PS Test "Per Shaker"
+% Adjust shaker-by-shakerk to minimize shaker voltage while also meeting
+% environment.
+
+% Compute the metrics for the flight environment
+[metrics_fl] = GetMetrics(Sxx(filt_inds,filt_inds,:),phi,fs,fb_inds,rms_inds,bf,Ts(2),p);
+
+return
+    % Initial estimate for force autospectra
+    F_in_0 = diag(Sff_buzz(:,:,1)); % all frequency lines are identical
+
+    
+
+
+% Find the true peak RMS stress in the lab, as well as the PSD at the
+% location where it occurs:
+[sigrms_PS,sigpsd_PS,sigloc_PS] = GetStressFunc(Hs,Sff_PS,df,rms_inds,1:nsh); % calculate max lab VM stress PSD
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

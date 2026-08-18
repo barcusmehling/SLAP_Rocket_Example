@@ -1,19 +1,29 @@
 function rd_est = GetFatigueRatio(Ssigsig_lab,Ssigsig_fl,bf,fs,freq_inds,Ts)
-    % Calculate fatigue damage ratio (lab / flight) using VM stress PSDs
+% Calculate fatigue damage ratio (lab / flight) using VM stress PSDs
+%
+% rd_est = GetFatigueRatio(Ssigsig_lab,Ssigsig_fl,bf,fs,freq_inds,Ts)
+%
+% Ssigsig_fl = nf x 1 matrix containing flight stress PSD
+% fs = nf x 1 frequency vector
+% freq_inds = frequencies over which to compute the metric
+%
+% Ts = [Tlab,... % duration of lab test
+%       Tflight]; % duration of flight
+% bf - see paper
 
-    Tlab = Ts(1); % duration of lab test
-    Tflight = Ts(2); % duration of flight
-    ws = 2*pi*fs; % convert to rad/s from Hz
-    
-    Ssigsig_lab = reshape(Ssigsig_lab,[length(Ssigsig_lab) 1]); % make VM stress PSDs column vectors (if not already)
-    Ssigsig_fl = reshape(Ssigsig_fl,[length(Ssigsig_fl) 1]);
-    ws = reshape(ws,[length(ws) 1]); % make ws column vector (for elementwise mult)
+Tlab = Ts(1); % duration of lab test
+Tflight = Ts(2); % duration of flight
+ws = 2*pi*fs; % convert to rad/s from Hz
 
-    scale_vec = ws.^(2/bf); % vector of weighted frequencies (higher freq = more load cycles = weighted heavier)
+Ssigsig_lab = reshape(Ssigsig_lab,[length(Ssigsig_lab) 1]); % make VM stress PSDs column vectors (if not already)
+Ssigsig_fl = reshape(Ssigsig_fl,[length(Ssigsig_fl) 1]);
+ws = reshape(ws,[length(ws) 1]); % make ws column vector (for elementwise mult)
 
-    numer = sum(scale_vec(freq_inds).*Ssigsig_lab(freq_inds)); % numerator / lab term weighted avg.
+scale_vec = ws.^(2/bf); % vector of weighted frequencies (higher freq = more load cycles = weighted heavier)
 
-    denom = sum(scale_vec(freq_inds).*Ssigsig_fl(freq_inds)); % fl term
+numer = sum(scale_vec(freq_inds).*Ssigsig_lab(freq_inds)); % numerator / lab term weighted avg.
 
-    rd_est = (numer/denom)^(bf/2)*Tlab/Tflight; % scale by relative time to get damage ratio
+denom = sum(scale_vec(freq_inds).*Ssigsig_fl(freq_inds)); % fl term
+
+rd_est = (numer/denom)^(bf/2)*Tlab/Tflight; % scale by relative time to get damage ratio
 end

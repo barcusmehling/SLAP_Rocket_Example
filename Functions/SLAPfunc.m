@@ -66,6 +66,9 @@ sc_factors(4) = max(qrats.^-2);
 scaling = abs(max(sc_factors(use_ind))); 
 
 % scaled values of metrics
-metrics = abs([sqrt(scaling)*sig_rms_ratio sqrt(scaling)*sig_peak_ratio scaling^(bf/2)*fatigue_ratio sqrt(scaling)*min(qrats)]); % get rid of residual (~0) imaginary parts, if any  
+disp('Damage Metrics Before SLAP Scaling');
+abs([sig_rms_ratio sig_peak_ratio fatigue_ratio min(qrats)])
+disp('Damage Metrics After SLAP Scaling');
+metrics = abs([sqrt(scaling)*sig_rms_ratio sqrt(scaling)*sig_peak_ratio scaling^(bf/2)*fatigue_ratio sqrt(scaling)*min(qrats)]) % get rid of residual (~0) imaginary parts, if any  
 
 end

@@ -1,5 +1,19 @@
-function [Ssigsig_lab,Ssigsig_fl] = GetStressPSDs(Spp_lab,Spp_fl)
-    % Get approximate stress PSDs to use in SLAP
+function [Ssigsig_lab,varargout] = GetStressPSDs(Spp_lab,varargin)
+% Get approximate stress PSDs to use in SLAP.
+% 
+% Note that these assume that the stress mode shapes, which relate the
+% fixed-base modal amplitudes to the stress, are all unity, so this is the
+% same as the sum of the PSDs of the fixed-base modes.
+%
+% [Ssigsig_lab,Ssigsig_fl] = GetStressPSDs(Spp_lab,Spp_fl)
+%
+% Note, if you only want the PSDs from one Spectral Density Matrix, use
+%
+% [Ssigsig] = GetStressPSDs(Spp)
+%
+
+if nargin > 1
+    Spp_fl = varargin{1};
 
     nf = size(Spp_lab,3); % num freq lines
 
@@ -31,5 +45,31 @@ function [Ssigsig_lab,Ssigsig_fl] = GetStressPSDs(Spp_lab,Spp_fl)
     inds = find(Ssigsig_lab < 0); % make all nonnegative terms zero
 
     Ssigsig_lab(inds) = 0;
+    varargout{1} = Ssigsig_fl;
+    
+else % Compute only for one SDM
+
+    nf = size(Spp_lab,3); % num freq lines
+
+    Ssigsig_lab = zeros(nf,1); % lab and flight (approx.) VM stress PSDs
+
+    for ii = 1:nf % estimate stress at each freq line (Eqs. 20 and 21, "method for conservative MIMO vibration testing")
+        diag_lab = real(sum(diag(Spp_lab(:,:,ii)))); % sum FB PSDs for lab
+
+        Ssigsig_lab(ii) = Ssigsig_lab(ii) + diag_lab; % add FB PSD terms to lab stress PSD
+
+        Spp_off_lab = Spp_lab(:,:,ii)-diag(diag(Spp_lab(:,:,ii))); % retain FB CPSD terms
+
+        off_lab = .5*sum(sum(abs(real(Spp_off_lab)))); % create off diagonal term for stress PSD 
+
+        Ssigsig_lab(ii) = Ssigsig_lab(ii) - off_lab; % subtract off diag terms from lab VM stress PSD
+
+    end
+
+    inds = find(Ssigsig_lab < 0); % make all nonnegative terms zero
+
+    Ssigsig_lab(inds) = 0;
+
+end
 
 end
