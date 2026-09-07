@@ -190,7 +190,7 @@ figure(2);
 hold on;
 semilogy(fs,abs(sigpsd_buzz)*scaling_buzz,'-.','Linewidth',2)
 hold off;
-legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
+legend('Flight',[num2str(nsh), ' DOF'],'SLAP-Control','SLAP-Buzz')
 
 % Plot reference responses in flight vs. lab
 figure(3); set(gcf,'Units','normalized','Position',[0.1     0.23          0.4         0.25]);
@@ -204,7 +204,7 @@ for ii = 1:3
     grid on;
     xlim([10 2000])
     if ii == 1
-        legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
+        legend('Flight',[num2str(nsh), ' DOF'],'SLAP-Control','SLAP-Buzz')
     end
     title(titles{ii})
 end
@@ -225,7 +225,7 @@ for ii = 1:3
     grid on;
     xlim([10 2000])
     if ii == 1
-        legend('Flight','6 DOF','SLAP-Control','SLAP-Buzz')
+        legend('Flight',[num2str(nsh), ' DOF'],'SLAP-Control','SLAP-Buzz')
     end
     title(titles{ii})
 end
