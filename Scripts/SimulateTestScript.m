@@ -232,26 +232,3 @@ end
 ylabel(tlt,'Acceleration PSD (g^2/Hz)','interpreter','tex')
 tlt.TileSpacing = 'tight';
 tlt.Padding = 'tight';    
-
-%% Simulate a SLAP-PS Test "Per Shaker"
-% Adjust shaker-by-shakerk to minimize shaker voltage while also meeting
-% environment.
-
-% Compute the metrics for the flight environment
-[metrics_fl] = GetMetrics(Sxx(filt_inds,filt_inds,:),phi,fs,fb_inds,rms_inds,bf,Ts(2),p);
-
-return
-    % Initial estimate for force autospectra
-    F_in_0 = diag(Sff_buzz(:,:,1)); % all frequency lines are identical
-
-    
-
-
-% Find the true peak RMS stress in the lab, as well as the PSD at the
-% location where it occurs:
-[sigrms_PS,sigpsd_PS,sigloc_PS] = GetStressFunc(Hs,Sff_PS,df,rms_inds,1:nsh); % calculate max lab VM stress PSD
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
