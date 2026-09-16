@@ -142,6 +142,14 @@ print("Element set '{}': {} elements across {} instance(s).".format(
     elset_name, len(elset_labels),
     len(set(i.name for i in elem_to_instance.values()))))
 
+# Deduplicate instances by name
+seen  = set()
+insts = []
+for inst in elem_to_instance.values():
+    if inst.name not in seen:
+        seen.add(inst.name)
+        insts.append(inst)
+
 # ---------------------------------------------------------------------------
 # Validate element set and build label lookup
 # ---------------------------------------------------------------------------
@@ -158,9 +166,10 @@ print("Element set '{}': {} elements.".format(elset_name, len(elset_labels)))
 # Build node coordinate lookup  — per instance
 # ---------------------------------------------------------------------------
 print("Building node coordinate lookup ...")
+
 # Keyed by (instance_name, node_label) to avoid collisions across instances
 node_coord = {}
-for inst in set(elem_to_instance.values()):
+for inst in insts:
     for node in inst.nodes:
         coords = list(node.coordinates)
         while len(coords) < 3:
@@ -175,19 +184,34 @@ elem_nodes    = {}
 elem_section  = {}
 elem_material = {}
 
-for inst in set(elem_to_instance.values()):
+for inst in insts:
     for elem in inst.elements:
         if elem.label in elset_labels:
             elem_nodes[elem.label] = (inst.name, list(elem.connectivity))
 
     for sa in inst.sectionAssignments:
-        sec   = sa.section
-        sname = sec.name
         try:
-            mname = sec.material
+            sec   = sa.section
+            sname = sec.name
+            try:
+                mname = sec.material
+            except AttributeError:
+                mname = ""
         except AttributeError:
-            mname = ""
-        for el in sa.region.elements:
+            # Some Abaqus versions expose sectionName directly on the assignment
+            try:
+                sname = sa.sectionName
+                mname = ""
+            except AttributeError:
+                sname = ""
+                mname = ""
+
+        try:
+            region_elems = sa.region.elements
+        except AttributeError:
+            continue
+
+        for el in region_elems:
             if el.label in elset_labels:
                 elem_section[el.label]  = sname
                 elem_material[el.label] = mname
