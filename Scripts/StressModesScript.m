@@ -17,8 +17,6 @@ for ii = 1:nmodes+1 % save stress tensor values to psi
     c = c + ndof;
 end
 
-psi(:,:,1) = []; % get rid of fake 1st mode - doesn't actually correspond to a mode
-
 save('../ModeShapes/FixedBase_Stress_Modes','psi')
 
 %% Flight stress modes
@@ -35,8 +33,6 @@ for ii = 1:nmodes+1
     c = c + ndof;
 end
 
-psi(:,:,1) = [];
-
 save('..\ModeShapes\Full_Rocket_Stress_Modes','psi')
 
 %% Lab setup stress modes
@@ -52,8 +48,6 @@ for ii = 1:nmodes+1
     psi(:,:,ii) = [data.S_S11(c:c+ndof-1) data.S_S22(c:c+ndof-1) data.S_S33(c:c+ndof-1) data.S_S12(c:c+ndof-1) data.S_S13(c:c+ndof-1) data.S_S23(c:c+ndof-1)];
     c = c + ndof;
 end
-
-psi(:,:,1) = [];
 
 save('..\ModeShapes\BARC_Baseplate_Stress_Modes','psi')
 
