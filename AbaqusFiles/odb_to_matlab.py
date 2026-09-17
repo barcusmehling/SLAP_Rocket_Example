@@ -3,11 +3,16 @@ odb_to_matlab.py
 ----------------
 Extracts modal analysis results from an Abaqus ODB file and saves them
 to a MATLAB .mat file containing:
-  - phi   : mode shape matrix  [n_dof x n_modes]  sorted by node label & DOF
-  - fn    : natural frequencies [n_modes x 1]  (Hz)
-  - dof   : DOF table  [n_dof x 2]  (node_label | dof_index 1-6)
-  - nodes : node coordinates  [n_nodes x 4]  (label | X | Y | Z)
-  - elems_<TYPE> : element connectivity per type  (label | n1 | n2 | ...)
+  - phi      : mode shape matrix     [n_dof x n_modes]   sorted by node label & DOF
+  - fn       : natural frequencies   [n_modes x 1]       (Hz)
+  - dof      : DOF table             [n_active_dof x 1]  format: node.dof (e.g. 1042.2)
+  - nodes    : node coordinates      [n_nodes x 4]       (label | X | Y | Z)
+  - elems    : element connectivity  [n_elems x 10]      (label | vtk_type | n1..n8)
+
+  If --elset is provided, also extracts:
+  - psi      : modal stress tensor   [n_results x 6 x n_modes]
+               component order: S11 S22 S33 S12 S13 S23
+  - elset_id : result ID table       [n_results x 2]     (elem_label | int_point)
 
 Usage (must be run inside Abaqus Python):
   abaqus python odb_to_matlab.py --odb path/to/result.odb [options]
@@ -15,7 +20,8 @@ Usage (must be run inside Abaqus Python):
 Options:
   --step     Step name            (default: last step)
   --instance Assembly instance    (default: first instance)
-  --mat      Output .mat path     (default: <odb_name>.mat)
+  --elset    Element set name     (optional, enables stress extraction)
+  --mat      Output .mat path     (default: <odb_name>_Modes.mat)
 
 Dependencies:
   odbAccess  - bundled with Abaqus
@@ -36,6 +42,7 @@ parser.add_argument("--odb",      required=True, help="Path to the .odb file")
 parser.add_argument("--step",     default=None,  help="Step name (default: last step)")
 parser.add_argument("--mat",      default=None,  help="Output .mat file")
 parser.add_argument("--instance", default=None,  help="Assembly instance name")
+parser.add_argument("--elset",    default=None,  help="Element set name for stress extraction (optional)")
 args = parser.parse_args()
 
 odb_path    = os.path.abspath(args.odb)
@@ -43,7 +50,8 @@ odb_name    = os.path.splitext(os.path.basename(odb_path))[0]
 default_dir = os.path.abspath(os.path.join(os.path.dirname(odb_path), "..", "ModeShapes"))
 if not os.path.exists(default_dir):
     os.makedirs(default_dir)
-mat_path = args.mat or os.path.join(default_dir, odb_name + "_Modes.mat")
+mat_path   = args.mat or os.path.join(default_dir, odb_name + "_Modes.mat")
+elset_name = args.elset
 
 # ---------------------------------------------------------------------------
 # Open ODB
@@ -179,9 +187,60 @@ if unknown_types:
     print("  Add them to the VTK_TYPE dict at the top of the script.")
 
 # ---------------------------------------------------------------------------
+# Resolve element set and build stress extraction lookups (if --elset given)
+# ---------------------------------------------------------------------------
+do_stress    = elset_name is not None
+elset_region = None
+result_ids   = []
+psi          = None
+
+if do_stress:
+    print("\nResolving element set '{}' for stress extraction ...".format(elset_name))
+
+    # Check assembly-level sets first, then fall back to per-instance search
+    if elset_name in odb.rootAssembly.elementSets:
+        elset_region = odb.rootAssembly.elementSets[elset_name]
+        print("  Found at assembly level (may span multiple instances).")
+    else:
+        for iname in instance_names:
+            inst = odb.rootAssembly.instances[iname]
+            if elset_name in inst.elementSets:
+                elset_region = inst.elementSets[elset_name]
+                print("  Found on instance '{}'.".format(iname))
+                break
+
+    if elset_region is None:
+        odb.close()
+        sys.exit("ERROR: Element set '{}' not found on any instance or at assembly level.\n"
+                 "       Available instances: {}".format(elset_name, instance_names))
+
+    # Build element label -> instance lookup (handles assembly-level elsets)
+    elem_to_instance = {}
+    elset_labels     = set()
+    for el in elset_region.elements:
+        elset_labels.add(el.label)
+        if hasattr(el, "instanceName"):
+            iname = el.instanceName
+            elem_to_instance[el.label] = odb.rootAssembly.instances[iname]
+        else:
+            elem_to_instance[el.label] = instance
+
+    print("  {} elements across {} instance(s).".format(
+        len(elset_labels),
+        len(set(i.name for i in elem_to_instance.values()))))
+
+    # Deduplicate instances by name
+    seen  = set()
+    insts = []
+    for inst in elem_to_instance.values():
+        if inst.name not in seen:
+            seen.add(inst.name)
+            insts.append(inst)
+
+# ---------------------------------------------------------------------------
 # Extract modal frequencies and mode shapes (bulk read)
 # ---------------------------------------------------------------------------
-print("Extracting frequencies and mode shapes ...")
+print("\nExtracting frequencies and mode shapes ...")
 
 # DOF layout per node: U1 U2 U3 UR1 UR2 UR3  (Abaqus indices 1-6)
 N_DOF_PER_NODE = 6
@@ -199,15 +258,41 @@ fn  = np.zeros(n_modes, dtype=np.float64)
 
 # Build DOF table aligned to the sorted node order.
 # Rows are ordered: node0/DOF1 ... node0/DOF6, node1/DOF1 ... nodeN/DOF6
-# This is kept consistent with how phi rows are written during bulk extraction.
 dof_node  = np.repeat(node_labels, N_DOF_PER_NODE)
 dof_index = np.tile(np.arange(1, N_DOF_PER_NODE + 1, dtype=np.int32), n_nodes)
-# Full 2-col table used internally to track phi row layout
 dof_full  = np.column_stack([dof_node, dof_index])      # [n_dof x 2]
+
+# Pre-allocate psi  [n_results x 6 x n_modes]  if stress extraction is on
+if do_stress:
+    print("\nDiscovering stress result locations from first mode frame ...")
+    first_frame  = mode_frames[0]
+    subset       = first_frame.fieldOutputs["S"].getSubset(region=elset_region)
+
+    # Collect unique element labels only (average over integration points)
+    elem_label_set = []
+    seen_els       = set()
+    for val in subset.values:
+        if val.elementLabel not in seen_els:
+            seen_els.add(val.elementLabel)
+            elem_label_set.append(val.elementLabel)
+
+    elem_label_set.sort()
+    result_ids = np.array(elem_label_set, dtype=np.int32).reshape(-1, 1)  # [n_elems x 1]
+    n_results  = len(result_ids)
+    id_to_row  = {int(result_ids[i, 0]): i for i in range(n_results)}
+    psi        = np.zeros((n_results, 6, n_modes), dtype=np.float64)
+    ip_count   = np.zeros(n_results, dtype=np.int32)   # for averaging
+    print("  {} elements found in elset.".format(n_results))
+
+# ---------------------------------------------------------------------------
+# Main extraction loop — mode shapes and stresses in one pass
+# ---------------------------------------------------------------------------
+print("\nExtracting mode shapes{} ...".format(
+    " and stresses" if do_stress else ""))
 
 for m_idx, frame in enumerate(mode_frames):
 
-    # --- Parse frequency from frame description --------------------------------
+    # --- Parse frequency from frame description ----------------------------
     # Abaqus description looks like:
     #   "Mode   1: Value =  1.23456E+04  Freq =  1.7684E+01  (cycles/time)"
     # frame.frameValue is just the mode number (1, 2, 3...), NOT the frequency.
@@ -230,14 +315,12 @@ for m_idx, frame in enumerate(mode_frames):
     fn[m_idx] = freq_hz
     print("  Mode {:>3}: {:>12.4f} Hz  | {}".format(m_idx + 1, fn[m_idx], desc.strip()))
 
-    # --- Translational DOFs (U) via bulk read ----------------------------------
+    # --- Translational DOFs (U) via bulk read ------------------------------
     if "U" not in frame.fieldOutputs:
         print("    WARNING: 'U' field not found in mode {}, skipping.".format(m_idx + 1))
         continue
 
     for block in frame.fieldOutputs["U"].bulkDataBlocks:
-        # block.nodeLabels : int array  [n_block]
-        # block.dataDouble : float64    [n_block x n_components]
         try:
             data = block.dataDouble
         except Exception:
@@ -257,7 +340,7 @@ for m_idx, frame in enumerate(mode_frames):
                 break
             phi[row_indices * N_DOF_PER_NODE + dof_slot, m_idx] = data[:, comp]
 
-    # --- Rotational DOFs (UR) via bulk read ------------------------------------
+    # --- Rotational DOFs (UR) via bulk read --------------------------------
     if "UR" in frame.fieldOutputs:
         for block in frame.fieldOutputs["UR"].bulkDataBlocks:
             try:
@@ -279,6 +362,31 @@ for m_idx, frame in enumerate(mode_frames):
                     break
                 phi[row_indices * N_DOF_PER_NODE + dof_slot, m_idx] = data[:, comp]
 
+    # --- Stresses (S) ------------------------------------------------------
+    if do_stress:
+
+        if "S" not in frame.fieldOutputs:
+            print("    WARNING: 'S' field not found in mode {}, skipping.".format(m_idx + 1))
+        else:
+            subset = frame.fieldOutputs["S"].getSubset(region=elset_region)
+
+            # Accumulate stress over integration points
+            psi_frame = np.zeros((n_results, 6), dtype=np.float64)
+            ip_count  = np.zeros(n_results, dtype=np.int32)
+
+            for val in subset.values:
+                el = int(val.elementLabel)
+                if el not in id_to_row:
+                    continue
+                row = id_to_row[el]
+                psi_frame[row, :] += val.data
+                ip_count[row]     += 1
+
+            # Average over integration points and store
+            for row in range(n_results):
+                if ip_count[row] > 0:
+                    psi[row, :, m_idx] = psi_frame[row, :] / ip_count[row]
+
 odb.close()
 print("ODB closed.")
 
@@ -286,23 +394,21 @@ print("ODB closed.")
 # phi: keep full 6-DOF zero-padded layout  [n_nodes*6 x n_modes]
 # dof: active DOFs only, single column, format node.dof  (e.g. 1042.2)
 # ---------------------------------------------------------------------------
-# phi retains a row for every DOF (active or not). Inactive DOFs (e.g.
-# rotational DOFs on solid nodes) are zero rows.
 phi_reduced = phi
 
 # Active mask: rows that are non-zero in at least one mode
 active_mask = np.any(phi != 0, axis=1)
 
 # Build dof vector: format node_label.dof_index (e.g. node 1042, DOF 2 -> 1042.2)
-# Use float64 so the decimal digit is preserved exactly (dof index is 1-6,
-# so the fractional part is always a single digit with no rounding issues).
 dof_active = (dof_full[active_mask, 0].astype(np.float64)
               + dof_full[active_mask, 1].astype(np.float64) * 0.1)
 dof_active = dof_active.reshape(-1, 1)   # column vector for MATLAB
 
-print("phi shape : {} (6 DOFs per node, zeros for inactive DOFs).".format(phi.shape))
+print("\nphi shape : {} (6 DOFs per node, zeros for inactive DOFs).".format(phi.shape))
 print("dof shape : {} (active DOFs only, format = node.dof).".format(dof_active.shape))
 print("DOF ordering: sorted by ascending node label, then DOF index 1->6.")
+if do_stress:
+    print("psi shape : {} (result_locs x 6 components x modes).".format(psi.shape))
 
 # ---------------------------------------------------------------------------
 # Save to .mat
@@ -315,15 +421,25 @@ except ImportError:
         "Install with:  pip install scipy"
     )
 
-save_dict = {
-    "phi"  : phi_reduced,          # [n_nodes*6 x n_modes]
-    "fn"   : fn.reshape(-1, 1),    # [n_modes x 1]  column vector in MATLAB
-    "dof"  : dof_active,           # [n_active_dof x 1]  format: node.dof
-    "nodes": nodes_mat,            # [n_nodes x 4]  (label | X | Y | Z)
-    "elems": elems_mat,            # [n_elems x 10] (label | vtk_type | n1..n8)
+phi_reduced = phi_reduced.astype(np.float32)
+dof_active  = dof_active.astype(np.float32)
+nodes_mat   = nodes_mat.astype(np.float32)
+fn_out      = fn.reshape(-1,1).astype(np.float32)
+psi         = psi.astype(np.float32)
+
+modes_dict = {
+    "phi"   : phi_reduced,
+    "fn"    : fn.reshape(-1,1),
+    "dof"   : dof_active,
+    "nodes" : nodes_mat,
+    "elems" : elems_mat
 }
 
-savemat(mat_path, save_dict, do_compression=True)
+if do_stress:
+    modes_dict["psi"]      = psi
+    modes_dict["elset_id"] = result_ids
+
+savemat(mat_path, modes_dict, do_compression=True)
 
 print("\nVariables in .mat file:")
 print("  phi   {} - mode shape matrix (6 DOFs/node, zero-padded)".format(phi_reduced.shape))
@@ -331,10 +447,15 @@ print("  fn    {} - natural frequencies (Hz)".format(fn.reshape(-1, 1).shape))
 print("  dof   {} - active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)".format(dof_active.shape))
 print("  nodes {} - (label | X | Y | Z)".format(nodes_mat.shape))
 print("  elems {} - (label | vtk_type | n1..n8)".format(elems_mat.shape))
+if do_stress:
+    print("  psi   {} - stress tensor (result_locs x 6 components x modes)".format(psi.shape))
+    print("  elset_id {} - (elem_label | integration_point)".format(result_ids.shape))
 print("\nElement matrix column layout:")
 print("  col 1    : element label")
 print("  col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ...)")
 print("  col 3-10 : node connectivity (zero-padded for elements with < 8 nodes)")
 print("\nDOF index legend:  1=U1  2=U2  3=U3  4=UR1  5=UR2  6=UR3")
+if do_stress:
+    print("psi component order:  1=S11  2=S22  3=S33  4=S12  5=S13  6=S23")
 print("\nDone.")
-print("\nSaved: ../ModeShapes/{}_Modes.mat".format(odb_name))
+print("\nSaved: {}".format(mat_path))
