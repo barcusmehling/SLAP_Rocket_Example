@@ -5,9 +5,9 @@
 % BARC Fixed-Base Stress Modes (I don't actually use these for anything at
 % the moment...)
 clc;close all;clear all;
-load ..\ModeShapes\BARC_FixedBase_Modes.mat;
-data = readtable('..\ModeShapes\BARC_FixedBase_Stress.csv');
-ndof = 459; % num. stress elements to calculate stress on. can check this in csv file.
+load ..\ModeShapes\GOBLET_FixedBase_Modes.mat;
+data = readtable('..\ModeShapes\OLD_method.csv');
+ndof = 1280; % num. stress elements to calculate stress on. can check this in csv file.
 nmodes = size(phi,2); % 6 fixed-base modes of the DUT 
 psi = zeros(ndof,6,nmodes+1); % stress mode matrix - 6 (num stress tensor components) x nmodes for each stress el
 
@@ -16,6 +16,8 @@ for ii = 1:nmodes+1 % save stress tensor values to psi
     psi(:,:,ii) = [data.S_S11(c:c+ndof-1) data.S_S22(c:c+ndof-1) data.S_S33(c:c+ndof-1) data.S_S12(c:c+ndof-1) data.S_S13(c:c+ndof-1) data.S_S23(c:c+ndof-1)];
     c = c + ndof;
 end
+
+psi(:,:,1) = []; % get rid of fake 1st mode - doesn't actually correspond to a mode
 
 save('../ModeShapes/FixedBase_Stress_Modes','psi')
 

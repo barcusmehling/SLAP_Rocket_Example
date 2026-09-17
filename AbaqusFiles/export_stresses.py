@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser(description="Export Abaqus modal stress ODB to 
 parser.add_argument("--odb",      required=True, help="Path to the .odb file")
 parser.add_argument("--step",     default=None,  help="Step name (default: last step)")
 parser.add_argument("--elset",    required=True, help="Element set name to extract stress from")
-parser.add_argument("--csv",      default=None,  help="Output .csv file")
+parser.add_argument("--mat",      default=None,  help="Output .mat file")
 parser.add_argument("--instance", default=None,  help="Assembly instance name")
 args = parser.parse_args()
 
@@ -43,7 +43,7 @@ odb_name    = os.path.splitext(os.path.basename(odb_path))[0]
 default_dir = os.path.abspath(os.path.join(os.path.dirname(odb_path), "..", "ModeShapes"))
 if not os.path.exists(default_dir):
     os.makedirs(default_dir)
-csv_path = args.csv or os.path.join(default_dir, odb_name + "_Stress.csv")
+mat_path = args.mat or os.path.join(default_dir, odb_name + "_Stress.mat")
 elset_name  = args.elset
 
 # ---------------------------------------------------------------------------
@@ -239,100 +239,84 @@ n_results = len(result_ids)
 print("  {} result locations (element/IP pairs) found.".format(n_results))
 
 # ---------------------------------------------------------------------------
-# Extract stresses and write CSV
+# Extract stresses
+# psi : [n_results x 6 x n_modes]  (element/IP x stress component x mode)
+#   component order: S11 S22 S33 S12 S13 S23
 # ---------------------------------------------------------------------------
-print("Extracting stresses and writing CSV ...")
+print("Extracting stresses ...")
 
-CSV_HEADER = [
-    "ODB Name", "Step", "Frame", "Part Instance Name",
-    " Element Label", "         IntPt",
-    "X", "Y", "Z",
-    "Section Name", "Material Name", "Section Point",
-    "         S-S11", "         S-S22", "         S-S33",
-    "         S-S12", "         S-S13", "         S-S23",
-]
+n_results = len(result_ids)
+psi       = np.zeros((n_results, 6, n_modes), dtype=np.float64)
 
-with open(csv_path, "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(CSV_HEADER)
+for m_idx, frame in enumerate(mode_frames):
 
-    for m_idx, frame in enumerate(mode_frames):
+    # --- Parse frequency from frame description ----------------------------
+    freq_hz = None
+    desc    = frame.description
+    if "Freq" in desc:
+        try:
+            freq_hz = float(desc.split("Freq")[1].split()[1])
+        except Exception:
+            freq_hz = None
+    if freq_hz is None and "Value" in desc:
+        try:
+            eigenvalue = float(desc.split("Value")[1].split()[1])
+            freq_hz    = np.sqrt(abs(eigenvalue)) / (2.0 * np.pi)
+        except Exception:
+            freq_hz = None
+    if freq_hz is None:
+        freq_hz = 0.0
+        print("    WARNING: Could not parse frequency for mode {}, set to 0.".format(m_idx + 1))
+    fn[m_idx] = freq_hz
+    print("  Mode {:>3}: {:>12.4f} Hz  | {}".format(m_idx + 1, freq_hz, desc.strip()))
 
-        # --- Parse frequency from frame description ------------------------
-        freq_hz = None
-        desc    = frame.description
-        if "Freq" in desc:
-            try:
-                freq_hz = float(desc.split("Freq")[1].split()[1])
-            except Exception:
-                freq_hz = None
-        if freq_hz is None and "Value" in desc:
-            try:
-                eigenvalue = float(desc.split("Value")[1].split()[1])
-                freq_hz    = np.sqrt(abs(eigenvalue)) / (2.0 * np.pi)
-            except Exception:
-                freq_hz = None
-        if freq_hz is None:
-            freq_hz = 0.0
-            print("    WARNING: Could not parse frequency for mode {}, set to 0.".format(m_idx + 1))
+    # --- Extract stress for this frame -------------------------------------
+    if "S" not in frame.fieldOutputs:
+        print("    WARNING: 'S' field not found in mode {}, skipping.".format(m_idx + 1))
+        continue
 
-        frame_str = desc.strip()   # e.g. "Mode  1: Value = ... Freq = ... (cycles/time)"
-        print("  Mode {:>3}: {:>12.4f} Hz  | {}".format(m_idx + 1, freq_hz, frame_str))
+    subset = frame.fieldOutputs["S"].getSubset(region=elset_region)
 
-        # --- Extract stress for this frame ---------------------------------
-        if "S" not in frame.fieldOutputs:
-            print("    WARNING: 'S' field not found in mode {}, skipping.".format(m_idx + 1))
+    stress_map = {}
+    for val in subset.values:
+        key = (int(val.elementLabel), int(val.integrationPoint))
+        stress_map[key] = val.data    # (S11, S22, S33, S12, S13, S23)
+
+    for r_idx, (el_label, ip) in enumerate(result_ids):
+        data = stress_map.get((el_label, ip))
+        if data is None:
             continue
-
-        subset = frame.fieldOutputs["S"].getSubset(region=elset_region)
-
-        # Collect values into a dict keyed by (elem, ip) for ordered writing
-        stress_map = {}
-        for val in subset.values:
-            key = (int(val.elementLabel), int(val.integrationPoint))
-            stress_map[key] = val
-
-        # Write rows in sorted (elem_label, int_point) order
-        for (el_label, ip) in result_ids:
-            key = (el_label, ip)
-            if key not in stress_map:
-                continue
-
-            val   = stress_map[key]
-            data  = val.data          # (S11, S22, S33, S12, S13, S23)
-
-            # Node coordinates: average over element connectivity for the IP centroid
-            # (Abaqus does not expose IP coordinates directly; use element node average)
-            # Node coordinate average (use instance-aware lookup)
-            inst_name, conn = elem_nodes.get(el_label, (None, []))
-            coords = [node_coord.get((inst_name, n), [0.0, 0.0, 0.0]) for n in conn]
-            if coords:
-                x = sum(c[0] for c in coords) / len(coords)
-                y = sum(c[1] for c in coords) / len(coords)
-                z = sum(c[2] for c in coords) / len(coords)
-            else:
-                x = y = z = 0.0
-
-            sname = elem_section.get(el_label,  "")
-            mname = elem_material.get(el_label, "")
-
-            writer.writerow([
-                odb_path,
-                step.name,
-                frame_str,
-                '"{}"'.format(instance.name),
-                el_label,
-                ip,
-                x, y, z,
-                '"{}"'.format(sname),
-                '"{}"'.format(mname),
-                '""',          # Section Point — empty as in the reference
-                data[0], data[1], data[2],
-                data[3], data[4], data[5],
-            ])
+        psi[r_idx, :, m_idx] = data
 
 odb.close()
 print("ODB closed.")
 
+# ---------------------------------------------------------------------------
+# Save to .mat
+# ---------------------------------------------------------------------------
+try:
+    from scipy.io import savemat
+except ImportError:
+    sys.exit(
+        "ERROR: scipy not available.\n"
+        "Install with:  pip install scipy"
+    )
+
+mat_path = args.csv.replace(".csv", ".mat") if args.csv else os.path.join(
+    default_dir, odb_name + "_Stress.mat")
+
+save_dict = {
+    "psi"     : psi,                    # [n_results x 6 x n_modes]
+    "fn"      : fn.reshape(-1, 1),      # [n_modes x 1]  column vector in MATLAB
+    "elset_id": result_ids,             # [n_results x 2]  (elem_label | int_point)
+}
+
+savemat(mat_path, save_dict, do_compression=True)
+
+print("\nVariables in .mat file:")
+print("  psi      {} - stress tensor (result_locs x 6 components x modes)".format(psi.shape))
+print("  fn       {} - natural frequencies (Hz)".format(fn.reshape(-1, 1).shape))
+print("  elset_id {} - (elem_label | integration_point)".format(result_ids.shape))
+print("\nComponent order:  1=S11  2=S22  3=S33  4=S12  5=S13  6=S23")
 print("\nDone.")
-print("\nSaved: ../ModeShapes/{}_Stress.csv".format(odb_name))
+print("\nSaved: {}".format(mat_path))
