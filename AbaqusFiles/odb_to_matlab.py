@@ -14,19 +14,26 @@ to a MATLAB .mat file containing:
                component order: S11 S22 S33 S12 S13 S23
   - elset_id : result ID table       [n_results x 2]     (elem_label | int_point)
 
-Usage (must be run inside Abaqus Python):
-  abaqus python odb_to_matlab.py --odb path/to/result.odb [options]
+  If --nset is provided, also extracts:
+  - nset     : nodeset vector       [n_nodes x 4]       (label | X | Y | Z)
 
+Usage Examples (Using a Git Bash terminal):
+  abaqus python odb_to_matlab.py --odb path/to/result.odb [options]
+  abaqus python odb_to_matlab.py --odb path/to/result.odb --elset ELSET_NAME (elset name in all caps)
+  abaqus python odb_to_matlab.py --odb path/to/result.odb --nset Nset_Name (nset name case sensitive)
+  abaqus python odb_to_matlab.py --odb path/to/result.odb --elset ELSET_NAME --nset Nset_Name
+  
 Options:
   --step     Step name            (default: last step)
   --instance Assembly instance    (default: first instance)
-  --elset    Element set name     (optional, enables stress extraction)
   --mat      Output .mat path     (default: <odb_name>_Modes.mat)
+  --elset    Element set name     (optional, enables stress extraction)
+  --nset     Node set name        (optional, enables node set extraction)
 
 Dependencies:
-  odbAccess  - bundled with Abaqus
+  odbAccess  - bundled with Abaqus Python
   numpy      - bundled with Abaqus Python
-  scipy      - pip install scipy  (for savemat)
+  scipy      - bundled with Abaqus Python (not available in some older versions of Abaqus)
 """
 
 import sys
@@ -43,6 +50,7 @@ parser.add_argument("--step",     default=None,  help="Step name (default: last 
 parser.add_argument("--mat",      default=None,  help="Output .mat file")
 parser.add_argument("--instance", default=None,  help="Assembly instance name")
 parser.add_argument("--elset",    default=None,  help="Element set name for stress extraction (optional)")
+parser.add_argument("--nset",     default=None,  help="Node set name to be extracted")
 args = parser.parse_args()
 
 odb_path    = os.path.abspath(args.odb)
@@ -108,7 +116,7 @@ for node in instance.nodes:
     node_coords.append(coords)
 
 node_labels = np.array(node_labels, dtype=np.int32)
-node_coords = np.array(node_coords, dtype=np.float64)
+node_coords = np.array(node_coords, dtype=np.float32)
 
 # Sort by node label so everything is in a predictable order
 sort_idx    = np.argsort(node_labels)
@@ -238,6 +246,45 @@ if do_stress:
             insts.append(inst)
 
 # ---------------------------------------------------------------------------
+# Resolve node set and extract coordinates (if --nset given)
+# ---------------------------------------------------------------------------
+do_nset   = args.nset is not None
+nset_mat  = None
+
+if do_nset:
+    nset_name = args.nset
+    print("\nResolving node set '{}' ...".format(nset_name))
+
+    nset_region = None
+    if nset_name in odb.rootAssembly.nodeSets:
+        nset_region = odb.rootAssembly.nodeSets[nset_name]
+        print("  Found at assembly level.")
+    else:
+        for iname in instance_names:
+            inst = odb.rootAssembly.instances[iname]
+            if nset_name in inst.nodeSets:
+                nset_region = inst.nodeSets[nset_name]
+                print("  Found on instance '{}'.".format(iname))
+                break
+
+    if nset_region is None:
+        odb.close()
+        sys.exit("ERROR: Node set '{}' not found on any instance or at assembly level.\n"
+                 "       Available instances: {}".format(nset_name, instance_names))
+
+    # Extract [node_label, X, Y, Z]  sorted by node label
+    nset_rows = []
+    for node in nset_region.nodes:
+        coords = list(node.coordinates)
+        while len(coords) < 3:
+            coords.append(0.0)
+        nset_rows.append([node.label] + coords)
+
+    nset_rows.sort(key=lambda x: x[0])
+    nset_mat = np.array(nset_rows, dtype=np.float32)   # [n_nodes x 4]
+    print("  {} nodes found in node set.".format(len(nset_mat)))
+
+# ---------------------------------------------------------------------------
 # Extract modal frequencies and mode shapes (bulk read)
 # ---------------------------------------------------------------------------
 print("\nExtracting frequencies and mode shapes ...")
@@ -253,8 +300,8 @@ n_modes     = len(mode_frames)
 print("  {} modes found.".format(n_modes))
 
 # Pre-allocate full phi matrix  [n_nodes*6 x n_modes]
-phi = np.zeros((n_nodes * N_DOF_PER_NODE, n_modes), dtype=np.float64)
-fn  = np.zeros(n_modes, dtype=np.float64)
+phi = np.zeros((n_nodes * N_DOF_PER_NODE, n_modes), dtype=np.float32)
+fn  = np.zeros(n_modes, dtype=np.float32)
 
 # Build DOF table aligned to the sorted node order.
 # Rows are ordered: node0/DOF1 ... node0/DOF6, node1/DOF1 ... nodeN/DOF6
@@ -280,7 +327,7 @@ if do_stress:
     result_ids = np.array(elem_label_set, dtype=np.int32).reshape(-1, 1)  # [n_elems x 1]
     n_results  = len(result_ids)
     id_to_row  = {int(result_ids[i, 0]): i for i in range(n_results)}
-    psi        = np.zeros((n_results, 6, n_modes), dtype=np.float64)
+    psi        = np.zeros((n_results, 6, n_modes), dtype=np.float32)
     ip_count   = np.zeros(n_results, dtype=np.int32)   # for averaging
     print("  {} elements found in elset.".format(n_results))
 
@@ -324,7 +371,7 @@ for m_idx, frame in enumerate(mode_frames):
         try:
             data = block.dataDouble
         except Exception:
-            data = np.array(block.data, dtype=np.float64)
+            data = np.array(block.data, dtype=np.float32)
 
         labels     = block.nodeLabels
         valid_mask = np.array([int(lbl) in label_to_idx for lbl in labels])
@@ -346,7 +393,7 @@ for m_idx, frame in enumerate(mode_frames):
             try:
                 data = block.dataDouble
             except Exception:
-                data = np.array(block.data, dtype=np.float64)
+                data = np.array(block.data, dtype=np.float32)
 
             labels     = block.nodeLabels
             valid_mask = np.array([int(lbl) in label_to_idx for lbl in labels])
@@ -371,7 +418,7 @@ for m_idx, frame in enumerate(mode_frames):
             subset = frame.fieldOutputs["S"].getSubset(region=elset_region)
 
             # Accumulate stress over integration points
-            psi_frame = np.zeros((n_results, 6), dtype=np.float64)
+            psi_frame = np.zeros((n_results, 6), dtype=np.float32)
             ip_count  = np.zeros(n_results, dtype=np.int32)
 
             for val in subset.values:
@@ -400,8 +447,8 @@ phi_reduced = phi
 active_mask = np.any(phi != 0, axis=1)
 
 # Build dof vector: format node_label.dof_index (e.g. node 1042, DOF 2 -> 1042.2)
-dof_active = (dof_full[active_mask, 0].astype(np.float64)
-              + dof_full[active_mask, 1].astype(np.float64) * 0.1)
+dof_active = (dof_full[active_mask, 0].astype(np.float32)
+              + dof_full[active_mask, 1].astype(np.float32) * 0.1)
 dof_active = dof_active.reshape(-1, 1)   # column vector for MATLAB
 
 print("\nphi shape : {} (6 DOFs per node, zeros for inactive DOFs).".format(phi.shape))
@@ -421,19 +468,16 @@ except ImportError:
         "Install with:  pip install scipy"
     )
 
-phi_reduced = phi_reduced.astype(np.float32)
-dof_active  = dof_active.astype(np.float32)
-nodes_mat   = nodes_mat.astype(np.float32)
-fn_out      = fn.reshape(-1,1).astype(np.float32)
-psi         = psi.astype(np.float32)
-
 modes_dict = {
     "phi"   : phi_reduced,
     "fn"    : fn.reshape(-1,1),
     "dof"   : dof_active,
     "nodes" : nodes_mat,
-    "elems" : elems_mat
+    "elems" : elems_mat,
 }
+
+if do_nset:
+    modes_dict["nset"]     = nset_mat
 
 if do_stress:
     modes_dict["psi"]      = psi
@@ -442,14 +486,16 @@ if do_stress:
 savemat(mat_path, modes_dict, do_compression=True)
 
 print("\nVariables in .mat file:")
-print("  phi   {} - mode shape matrix (6 DOFs/node, zero-padded)".format(phi_reduced.shape))
-print("  fn    {} - natural frequencies (Hz)".format(fn.reshape(-1, 1).shape))
-print("  dof   {} - active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)".format(dof_active.shape))
-print("  nodes {} - (label | X | Y | Z)".format(nodes_mat.shape))
-print("  elems {} - (label | vtk_type | n1..n8)".format(elems_mat.shape))
+print("  phi      {} \t- mode shape matrix (6 DOFs/node, zero-padded)".format(phi_reduced.shape))
+print("  fn       {} \t\t- natural frequencies (Hz)".format(fn.reshape(-1, 1).shape))
+print("  dof      {} \t\t- active DOFs, format node.dof (e.g. 1042.2 = node 1042, U2)".format(dof_active.shape))
+print("  nodes    {} \t\t- (label | X | Y | Z)".format(nodes_mat.shape))
+print("  elems    {} \t- (label | vtk_type | n1..n8)".format(elems_mat.shape))
 if do_stress:
-    print("  psi   {} - stress tensor (result_locs x 6 components x modes)".format(psi.shape))
-    print("  elset_id {} - (elem_label | integration_point)".format(result_ids.shape))
+    print("  psi      {} \t- stress tensor (result_locs x 6 components x modes)".format(psi.shape))
+    print("  elset_id {} \t\t- (elem_label | integration_point)".format(result_ids.shape))
+if do_nset:
+    print("  nset     {} \t\t- (label | X | Y | Z)".format(nset_mat.shape))
 print("\nElement matrix column layout:")
 print("  col 1    : element label")
 print("  col 2    : VTK type code  (1=point 3=beam 5=tri 9=quad 10=tet 12=hex ...)")
